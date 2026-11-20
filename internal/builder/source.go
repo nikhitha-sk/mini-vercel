@@ -93,7 +93,9 @@ func ExtractZip(data []byte, dir string) (string, error) {
 	var total int64
 	tops := map[string]bool{}
 	for _, f := range zr.File {
-		name := filepath.ToSlash(f.Name)
+		// Normalise separators: archives made on Windows (e.g. PowerShell's
+		// Compress-Archive) may use backslashes.
+		name := strings.ReplaceAll(f.Name, "\\", "/")
 		if strings.HasPrefix(name, "__MACOSX/") {
 			continue
 		}
