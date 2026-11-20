@@ -27,9 +27,9 @@ const maxZipUpload = 100 << 20 // 100 MB
 
 type deploymentView struct {
 	store.Deployment
-	URL          string   `json:"url"`
-	IsProduction bool     `json:"isProduction"`
-	DurationMs   *int64   `json:"durationMs"`
+	URL          string `json:"url"`
+	IsProduction bool   `json:"isProduction"`
+	DurationMs   *int64 `json:"durationMs"`
 }
 
 func (s *Server) deploymentView(d store.Deployment, productionID string) deploymentView {

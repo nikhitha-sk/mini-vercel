@@ -26,10 +26,10 @@ func CancelChannel(id string) string { return "cancel:" + id }
 
 // Event is the message format on logs:<id>.
 type Event struct {
-	Type       string        `json:"type"` // "log" | "status"
-	Log        *store.LogLine `json:"log,omitempty"`
-	Status     store.Status  `json:"status,omitempty"`
-	Error      string        `json:"error,omitempty"`
+	Type       string            `json:"type"` // "log" | "status"
+	Log        *store.LogLine    `json:"log,omitempty"`
+	Status     store.Status      `json:"status,omitempty"`
+	Error      string            `json:"error,omitempty"`
 	Deployment *store.Deployment `json:"deployment,omitempty"`
 }
 
@@ -42,14 +42,14 @@ func Publish(ctx context.Context, rdb *redis.Client, id string, ev Event) {
 
 // Logger publishes every line live and persists them in batches.
 type Logger struct {
-	id    string
-	rdb   *redis.Client
-	st    *store.Store
-	mu    sync.Mutex
-	seq   int
-	buf   []store.LogLine
-	done  chan struct{}
-	wg    sync.WaitGroup
+	id   string
+	rdb  *redis.Client
+	st   *store.Store
+	mu   sync.Mutex
+	seq  int
+	buf  []store.LogLine
+	done chan struct{}
+	wg   sync.WaitGroup
 }
 
 func NewLogger(ctx context.Context, id string, rdb *redis.Client, st *store.Store) (*Logger, error) {

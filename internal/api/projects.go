@@ -18,12 +18,12 @@ import (
 
 type projectView struct {
 	store.Project
-	ProductionURL        string            `json:"productionUrl"`
-	ProductionDeployment *deploymentView   `json:"productionDeployment"`
-	LatestDeployment     *deploymentView   `json:"latestDeployment"`
-	WebhookURL           string            `json:"webhookUrl,omitempty"`
-	WebhookSecret        string            `json:"webhookSecret,omitempty"`
-	Aliases              []store.Alias     `json:"aliases,omitempty"`
+	ProductionURL        string          `json:"productionUrl"`
+	ProductionDeployment *deploymentView `json:"productionDeployment"`
+	LatestDeployment     *deploymentView `json:"latestDeployment"`
+	WebhookURL           string          `json:"webhookUrl,omitempty"`
+	WebhookSecret        string          `json:"webhookSecret,omitempty"`
+	Aliases              []store.Alias   `json:"aliases,omitempty"`
 }
 
 func (s *Server) projectView(ctx context.Context, p store.Project, detail bool) (projectView, error) {
