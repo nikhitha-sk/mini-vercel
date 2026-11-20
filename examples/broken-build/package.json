@@ -1,0 +1,8 @@
+{
+  "name": "broken-build",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo \"Compiling...\" && node -e \"console.error('SyntaxError: Unexpected token in src/app.js:12'); process.exit(1)\""
+  }
+}
