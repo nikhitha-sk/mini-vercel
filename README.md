@@ -1,0 +1,241 @@
+# Mini Vercel
+
+**A self-hosted static hosting platform.** Paste a GitHub repo (or upload a zip). A Go build pipeline builds it inside a sandboxed Docker container and serves it at its own URL, with live build logs and instant rollback.
+
+> Static sites only (Vite, React, Astro, Next.js static export, plain HTML). Serverless functions and SSR are out of scope on purpose.
+
+![Overview](docs/screenshots/overview.png)
+
+| Deployment with live logs | Project (dark mode) |
+| --- | --- |
+| ![Deployment](docs/screenshots/deployment.png) | ![Project](docs/screenshots/project-dark.png) |
+
+---
+
+## Features
+
+- **Git or zip deploys.** Public HTTPS repo + branch + root directory, or drag-and-drop a `.zip`.
+- **Framework presets.** Vite, Next.js (static export), Astro, CRA, Docusaurus, or plain HTML. The install command auto-detects npm / yarn / pnpm / bun.
+- **Sandboxed builds.** Every build gets a fresh `node:20-alpine` container: non-root, all capabilities dropped, `no-new-privileges`, 1 vCPU, 1 GB RAM (no swap), 256 PIDs, 10-minute limit. The container is removed afterwards, even on failure. The Docker socket is never mounted into it.
+- **Live build logs.** stdout/stderr are streamed over Server-Sent Events (Redis pub/sub) and stored in Postgres for later.
+- **Immutable deployments.** Every deployment keeps its own URL forever: `dpl-<id>.localhost:8080`.
+- **Production alias + instant rollback.** `<project>.localhost:8080` points at one deployment. Promoting or rolling back is a single `UPSERT` (about 25 ms) with no rebuild.
+- **Retries done right.** Infrastructure errors are retried with exponential backoff, while user build errors fail fast. Jobs are idempotent (at-least-once delivery), and a worker killed mid-build is recovered automatically.
+- **Edge router.** Host → deployment lookup with an LRU cache invalidated over pub/sub, SPA fallback to `index.html`, custom `404.html`, `immutable` caching for hashed assets, and ETag / 304 for HTML.
+- **Encrypted env vars.** AES-256-GCM, bound to the project, decrypted only for the build container.
+- **GitHub push webhooks.** HMAC-verified, so each push to the production branch deploys.
+- **Professional dashboard.** Next.js static export + Tailwind, light/dark mode, responsive, served by the API itself.
+
+## Architecture
+
+```
+            REST / SSE                   jobs                    jobs
+Dashboard ─────────────▶ API server ───────────▶ Redis (asynq) ─────────▶ Build workers
+(Next.js)               (Go, chi)  ◀─── logs ───  + pub/sub   ◀── logs ──  (Go)
+                            │                                                │ Docker API
+                            ▼ SQL                                            ▼
+                        PostgreSQL ◀──────── status ───────────────── Build container
+                            ▲                                          (one per deploy)
+                            │ host lookup (cached)                           │ upload dist/
+Visitors ── HTTPS ──▶ Edge router (Go) ───── GET ────▶ Object storage ◀──────┘
+*.yourdomain        (behind Caddy TLS)              (SeaweedFS / R2: /<deployId>/…)
+```
+
+The API never builds anything; workers do. The edge only reads. Each part scales on its own.
+
+| Layer | Choice |
+| --- | --- |
+| Dashboard | Next.js 15 (static export), Tailwind CSS v4, lucide icons |
+| API | Go, chi, pgx v5 |
+| Queue | Redis + hibiken/asynq (retries, backoff, timeouts, task dedupe) |
+| Sandbox | Docker Engine API (Go SDK), `node:20-alpine` |
+| Storage | S3 API via aws-sdk-go-v2: SeaweedFS locally, Cloudflare R2 in production |
+| Edge | Go `net/http` + LRU cache, Caddy for wildcard TLS |
+| Database | PostgreSQL 16 |
+
+### Repository layout
+
+```
+cmd/api, cmd/worker, cmd/edge   service entrypoints
+internal/api                    REST handlers, SSE log stream, webhooks
+internal/worker                 build job handler (clone → install → build → upload → promote)
+internal/builder                Docker sandbox, git clone, zip extraction, presets
+internal/edge                   host-based router serving files from storage
+internal/store                  Postgres schema, migrations, queries
+internal/storage, queue, logstream, secrets, config, ids
+dashboard/                      Next.js dashboard (static export)
+examples/                       test projects + ready-made zips
+deploy/                         Dockerfile, Caddyfile, SeaweedFS config
+```
+
+---
+
+## Run it locally
+
+### Requirements
+
+- **Docker Desktop** (on Windows, use the WSL2 backend)
+- **Go 1.25+**, **Node.js 20+**, **Git**
+
+### Option A: one click (Windows)
+
+Double-click **`run.bat`** in the project folder. This local launcher is git-ignored. It will:
+
+1. start Docker Desktop if it isn't running, and wait for it
+2. start Postgres, Redis and S3 storage (`docker compose up -d`)
+3. build the Go services and, on first run, the dashboard
+4. open three windows (**API**, **Build Worker**, **Edge Router**)
+5. open the dashboard at **http://localhost:4000**
+
+Stop everything with `run.bat stop`.
+
+### Option B: manual (any OS)
+
+```bash
+# 1. infrastructure
+docker compose up -d
+
+# 2. dashboard (once)
+cd dashboard && npm ci && npm run build && cd ..
+
+# 3. services: three terminals
+MV_DASHBOARD_DIR=dashboard/out go run ./cmd/api     # http://localhost:4000
+go run ./cmd/worker
+go run ./cmd/edge                                     # http://*.localhost:8080
+```
+
+To work on the UI with hot reload, run `npm run dev` in `dashboard/` (http://localhost:3000). It talks to the API on port 4000.
+
+| URL | What |
+| --- | --- |
+| http://localhost:4000 | Dashboard + API (`/api/...`) |
+| http://&lt;project&gt;.localhost:8080 | Production URL of a project |
+| http://dpl-&lt;id&gt;.localhost:8080 | Permanent preview URL of one deployment |
+
+> `*.localhost` resolves to your own machine in Chrome, Edge and Firefox, so no DNS setup is needed.
+
+---
+
+## How to test it
+
+The repo ships with test projects in [`examples/`](examples), so you don't need your own site.
+
+| Example | What it tests |
+| --- | --- |
+| `examples/vite-demo` | A real npm install + Vite build, SPA fallback |
+| `examples/static-site` | Plain HTML with no build step, a nested `/about` page, a custom `404.html` |
+| `examples/broken-build` | A build that always fails, to show error handling |
+| `examples/zips/*.zip` | The same three projects as ready-to-upload zip files |
+
+### Test 1: deploy from GitHub
+
+1. Open http://localhost:4000 → **Add New Project**.
+2. Click the **"Vite demo (this repo)"** example chip. It fills in
+   repo `https://github.com/nikhitha-sk/mini-vercel`, root directory `examples/vite-demo`, preset **Vite**.
+3. Click **Deploy**. You'll see the live build logs stream in (clone → install → build → upload).
+4. After about 15–30 s the status turns **Ready**. Click **Visit**, and the site opens at `http://vite-demo.localhost:8080`.
+
+### Test 2: upload a zip
+
+1. **Add New Project** → **Upload Zip**.
+2. Drop `examples/zips/static-site.zip` and set the preset to **Other / Static HTML**.
+3. Deploy, then visit the site. Also try `/about` and a missing page like `/nope.png` (you should get the custom 404).
+
+### Test 3: instant rollback
+
+1. On a ready project, click **Deploy** again (or **⋯ → Redeploy**) to create a second deployment.
+2. Go to **Deployments**, open the **⋯** menu on the older one → **Promote / Instant Rollback**.
+3. The production URL switches immediately. Each deployment's own `dpl-…` URL keeps working.
+
+### Test 4: failed build
+
+Deploy `examples/broken-build` (Git, root directory `examples/broken-build`, preset Vite) or upload `examples/zips/broken-build.zip`.
+The deployment ends in **Error**, stderr is shown in red, nothing is served, and it is **not** retried.
+
+### Test 5: env vars, cancel, resilience
+
+- **Environment Variables** tab: add a variable and redeploy. The logs show "Injected 1 environment variable(s)".
+- Start a deploy and click **Cancel** while it's building.
+- Kill the **Build Worker** window mid-build and start it again. The job is re-delivered and finishes (attempt 2).
+
+### API / command line
+
+```bash
+# create a project and deploy it
+curl -X POST localhost:4000/api/projects -H "content-type: application/json" \
+  -d '{"repoUrl":"https://github.com/nikhitha-sk/mini-vercel","rootDirectory":"examples/vite-demo","framework":"vite","deploy":true}'
+
+# deploy a zip to an existing project
+curl -F "file=@examples/zips/static-site.zip" localhost:4000/api/projects/<projectId>/deployments
+
+# stream live logs (SSE)
+curl -N localhost:4000/api/deployments/<deploymentId>/events
+
+# roll back
+curl -X POST localhost:4000/api/deployments/<deploymentId>/promote
+```
+
+### Automated tests
+
+```bash
+go test ./...                        # unit tests
+cd dashboard && npx tsc --noEmit     # dashboard type-check
+```
+
+### Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| "API offline" banner | The API window isn't running. Start it (`run.bat` or `go run ./cmd/api`). |
+| Deploy stuck in **Queued** | The Build Worker isn't running, or Docker Desktop is stopped. |
+| `npm install` fails in the build | The build container needs internet access to reach the npm registry. |
+| Site URL doesn't open | Use Chrome/Edge/Firefox. `*.localhost` must resolve to 127.0.0.1. |
+| Port already in use | Postgres uses 5433, Redis 6380, S3 9000, API 4000, edge 8080. |
+
+---
+
+## API reference
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/projects` | List projects |
+| POST | `/api/projects` | Create project (`deploy: true` to deploy immediately) |
+| GET / PATCH / DELETE | `/api/projects/:id` | Read / update / delete |
+| GET / PUT | `/api/projects/:id/env` | List keys / set a variable (`{key, value}`) |
+| DELETE | `/api/projects/:id/env/:key` | Remove a variable |
+| GET / POST | `/api/projects/:id/deployments` | List / deploy (JSON for Git, multipart `file` for zip) |
+| GET | `/api/deployments/:id` | Deployment details |
+| GET | `/api/deployments/:id/events` | Live logs + status (SSE) |
+| GET | `/api/deployments/:id/logs` | Stored logs |
+| POST | `/api/deployments/:id/promote` | Point production at this deployment (rollback) |
+| POST | `/api/deployments/:id/redeploy` | Rebuild with the same source |
+| POST | `/api/deployments/:id/cancel` | Cancel a queued/building deployment |
+| POST | `/api/webhooks/github/:projectId` | GitHub push webhook (HMAC `X-Hub-Signature-256`) |
+
+Set `MV_API_TOKEN` to require `Authorization: Bearer <token>`. All settings are listed in [`.env.example`](.env.example).
+
+---
+
+## Build plan & status
+
+| Phase | Goal | Status |
+| --- | --- | --- |
+| 1 | API + Postgres + worker that builds a public Vite repo | ✅ Done |
+| 2 | Docker sandbox, asynq queue, retries, status states, live SSE logs | ✅ Done (verified: a killed worker's job retries and finishes) |
+| 3 | Object storage, edge router, alias promote & rollback | ✅ Done locally · ⏳ wildcard domain + TLS on a VPS (`deploy/Caddyfile`) |
+| 4 | Dashboard, GitHub webhook, README | ✅ Done · ⏳ GitHub OAuth login, host the dashboard on the platform itself, public demo + recording |
+
+**Next up:** GitHub OAuth (multi-user), deploy to a VPS with Caddy + Cloudflare R2, deploy the dashboard *through* Mini Vercel itself, build cache keyed by lockfile hash, `deploy.json` redirects, per-deployment analytics at the edge.
+
+## Design notes (interview talking points)
+
+- **Immutable deployments + aliases.** Rollback is a pointer swap, and preview URLs never break because files under `/<deployId>/` are never overwritten.
+- **Running untrusted code.** Resource limits, non-root, no capabilities, no Docker socket, hard timeouts. Next steps would be egress limits and gVisor or Firecracker microVMs.
+- **At-least-once queues.** The handler only moves non-terminal deployments to BUILDING, so duplicate deliveries are no-ops. Storage keys are deterministic. Only infrastructure errors are retried.
+- **Edge caching.** Host lookups are cached in memory and invalidated over Redis pub/sub on promote. Hashed assets get `Cache-Control: immutable`.
+- **Why not plain NGINX.** Routes change on every deploy. A Go router reads them from Postgres; NGINX with a generated map file + reload is the alternative.
+- **Redis queue vs Postgres `SKIP LOCKED`.** asynq gives retries, backoff, timeouts, dedupe and orphan recovery out of the box. Redis is already needed for log pub/sub.
+
+## License
+
+MIT
