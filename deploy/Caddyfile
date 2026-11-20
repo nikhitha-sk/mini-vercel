@@ -1,0 +1,25 @@
+# Production front door (Phase 3 / 4). Caddy terminates TLS and forwards to
+# the Go services. Wildcard certificates need the DNS-01 challenge, so build
+# Caddy with the Cloudflare DNS module:
+#
+#   xcaddy build --with github.com/caddy-dns/cloudflare
+#
+# and set CLOUDFLARE_API_TOKEN (Zone:DNS:Edit) in Caddy's environment.
+# Set MV_ROOT_DOMAIN=yourdomain.dev, MV_PUBLIC_SCHEME=https, MV_PUBLIC_PORT=443.
+
+{
+	email you@example.com
+}
+
+# Dashboard + API
+app.yourdomain.dev {
+	reverse_proxy api:4000
+}
+
+# Every deployed site: <slug>.yourdomain.dev and dpl-<id>.yourdomain.dev
+*.yourdomain.dev {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+	reverse_proxy edge:8080
+}
