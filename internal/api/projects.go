@@ -14,6 +14,7 @@ import (
 
 	"github.com/nikhitha-sk/mini-vercel/internal/builder"
 	"github.com/nikhitha-sk/mini-vercel/internal/ids"
+	"github.com/nikhitha-sk/mini-vercel/internal/logstream"
 	"github.com/nikhitha-sk/mini-vercel/internal/store"
 	"github.com/nikhitha-sk/mini-vercel/internal/tunnel"
 )
@@ -344,6 +345,17 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	aliases, _ := s.Store.ProjectAliases(r.Context(), p.ID)
+	deps, err := s.Store.ListDeployments(r.Context(), p.ID, 100000)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	// Stop any build that is still running for this project.
+	for _, d := range deps {
+		if !d.Status.Terminal() {
+			s.Redis.Publish(r.Context(), logstream.CancelChannel(d.ID), "cancel")
+		}
+	}
 	// Remove the permanent Netlify site too (best effort).
 	if p.LiveSiteID != "" {
 		if err := s.Publish.DeleteSite(r.Context(), p.LiveSiteID); err != nil {
@@ -358,7 +370,33 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 	for _, a := range aliases {
 		s.invalidateHost(a.Hostname)
 	}
+	go s.purgeArtifacts(p.Slug, deps)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// purgeArtifacts deletes the stored build output and uploaded source zips of
+// a deleted project's deployments. It runs after the response is sent; any
+// failure only leaves orphaned objects behind, never a broken project.
+func (s *Server) purgeArtifacts(slug string, deps []store.Deployment) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	removed := 0
+	for _, d := range deps {
+		keys, err := s.Storage.List(ctx, d.ID+"/")
+		if err != nil {
+			slog.Warn("purge: list objects", "deployment", d.ID, "err", err)
+			continue
+		}
+		if d.Source == "zip" {
+			keys = append(keys, zipKey(d.ID))
+		}
+		for _, k := range keys {
+			if err := s.Storage.Delete(ctx, k); err == nil {
+				removed++
+			}
+		}
+	}
+	slog.Info("project deleted", "project", slug, "deployments", len(deps), "objects_removed", removed)
 }
 
 func (s *Server) loadProject(w http.ResponseWriter, r *http.Request) (store.Project, bool) {
