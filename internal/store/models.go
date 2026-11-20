@@ -42,6 +42,9 @@ type Project struct {
 	PublicEnabled bool      `json:"publicEnabled"`
 	PublicURL     string    `json:"publicUrl"`
 	PublicStatus  string    `json:"publicStatus"`
+	LiveSiteID    string    `json:"-"`
+	LiveURL       string    `json:"liveUrl"`
+	LiveStatus    string    `json:"liveStatus"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
@@ -65,6 +68,8 @@ type Deployment struct {
 	RootDir       string     `json:"rootDirectory"`
 	Framework     string     `json:"framework"`
 	NodeVersion   string     `json:"nodeVersion"`
+	LiveDeployID  string     `json:"-"`
+	LiveURL       string     `json:"liveUrl"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	StartedAt     *time.Time `json:"startedAt"`
 	FinishedAt    *time.Time `json:"finishedAt"`

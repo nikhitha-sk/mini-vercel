@@ -24,11 +24,11 @@ func (s *Store) EnsureLocalUser(ctx context.Context, id string) (User, error) {
 
 // ---------- projects ----------
 
-const projectCols = `id, owner_id, name, slug, repo_url, branch, framework, install_cmd, build_cmd, output_dir, root_dir, webhook_secret, public_enabled, public_url, public_status, created_at, updated_at`
+const projectCols = `id, owner_id, name, slug, repo_url, branch, framework, install_cmd, build_cmd, output_dir, root_dir, webhook_secret, public_enabled, public_url, public_status, live_site_id, live_url, live_status, created_at, updated_at`
 
 func scanProject(r pgx.Row) (Project, error) {
 	var p Project
-	err := r.Scan(&p.ID, &p.OwnerID, &p.Name, &p.Slug, &p.RepoURL, &p.Branch, &p.Framework, &p.InstallCmd, &p.BuildCmd, &p.OutputDir, &p.RootDir, &p.WebhookSecret, &p.PublicEnabled, &p.PublicURL, &p.PublicStatus, &p.CreatedAt, &p.UpdatedAt)
+	err := r.Scan(&p.ID, &p.OwnerID, &p.Name, &p.Slug, &p.RepoURL, &p.Branch, &p.Framework, &p.InstallCmd, &p.BuildCmd, &p.OutputDir, &p.RootDir, &p.WebhookSecret, &p.PublicEnabled, &p.PublicURL, &p.PublicStatus, &p.LiveSiteID, &p.LiveURL, &p.LiveStatus, &p.CreatedAt, &p.UpdatedAt)
 	return p, notFound(err)
 }
 
@@ -86,11 +86,11 @@ func (s *Store) TouchProject(ctx context.Context, id string) error {
 
 // ---------- deployments ----------
 
-const deploymentCols = `id, project_id, source, trigger, branch, commit_sha, commit_message, status, error, attempt, file_count, size_bytes, install_cmd, build_cmd, output_dir, root_dir, framework, node_version, created_at, started_at, finished_at`
+const deploymentCols = `id, project_id, source, trigger, branch, commit_sha, commit_message, status, error, attempt, file_count, size_bytes, install_cmd, build_cmd, output_dir, root_dir, framework, node_version, live_deploy_id, live_url, created_at, started_at, finished_at`
 
 func scanDeployment(r pgx.Row) (Deployment, error) {
 	var d Deployment
-	err := r.Scan(&d.ID, &d.ProjectID, &d.Source, &d.Trigger, &d.Branch, &d.CommitSHA, &d.CommitMessage, &d.Status, &d.Error, &d.Attempt, &d.FileCount, &d.SizeBytes, &d.InstallCmd, &d.BuildCmd, &d.OutputDir, &d.RootDir, &d.Framework, &d.NodeVersion, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
+	err := r.Scan(&d.ID, &d.ProjectID, &d.Source, &d.Trigger, &d.Branch, &d.CommitSHA, &d.CommitMessage, &d.Status, &d.Error, &d.Attempt, &d.FileCount, &d.SizeBytes, &d.InstallCmd, &d.BuildCmd, &d.OutputDir, &d.RootDir, &d.Framework, &d.NodeVersion, &d.LiveDeployID, &d.LiveURL, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
 	return d, notFound(err)
 }
 
@@ -383,4 +383,39 @@ func (s *Store) ListPublicProjects(ctx context.Context) ([]Project, error) {
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// ---------- settings (encrypted) ----------
+
+func (s *Store) GetSetting(ctx context.Context, key string) (ct, nonce []byte, err error) {
+	err = s.DB.QueryRow(ctx, `SELECT ciphertext, nonce FROM settings WHERE key=$1`, key).Scan(&ct, &nonce)
+	return ct, nonce, notFound(err)
+}
+
+func (s *Store) SetSetting(ctx context.Context, key string, ct, nonce []byte) error {
+	_, err := s.DB.Exec(ctx, `INSERT INTO settings (key, ciphertext, nonce) VALUES ($1,$2,$3)
+		ON CONFLICT (key) DO UPDATE SET ciphertext=EXCLUDED.ciphertext, nonce=EXCLUDED.nonce, updated_at=now()`, key, ct, nonce)
+	return err
+}
+
+func (s *Store) DeleteSetting(ctx context.Context, key string) error {
+	_, err := s.DB.Exec(ctx, `DELETE FROM settings WHERE key=$1`, key)
+	return err
+}
+
+// ---------- live hosting ----------
+
+func (s *Store) SetProjectLive(ctx context.Context, projectID, siteID, url, status string) error {
+	_, err := s.DB.Exec(ctx, `UPDATE projects SET live_site_id=$2, live_url=$3, live_status=$4 WHERE id=$1`, projectID, siteID, url, status)
+	return err
+}
+
+func (s *Store) SetProjectLiveStatus(ctx context.Context, projectID, status string) error {
+	_, err := s.DB.Exec(ctx, `UPDATE projects SET live_status=$2 WHERE id=$1`, projectID, status)
+	return err
+}
+
+func (s *Store) SetDeploymentLive(ctx context.Context, id, deployID, url string) error {
+	_, err := s.DB.Exec(ctx, `UPDATE deployments SET live_deploy_id=$2, live_url=$3 WHERE id=$1`, id, deployID, url)
+	return err
 }
