@@ -183,19 +183,27 @@ func (w *Worker) build(ctx context.Context, p queue.BuildPayload, d store.Deploy
 		_ = w.Store.SetCommit(ctx, d.ID, commit.SHA, commit.Message)
 	}
 
-	// 2. Decrypt env vars; plaintext only goes into the sandbox.
+	// 2. Work out what this project is (framework, package manager, Node
+	// version, output folder) so real repositories build with zero config.
+	plan, err := w.plan(p, srcDir, logger)
+	if err != nil {
+		return 0, 0, err
+	}
+	_ = w.Store.SetBuildInfo(ctx, d.ID, plan.framework, plan.node, plan.install, plan.build, plan.outputLabel(), plan.rootDir)
+
+	// 3. Decrypt env vars; plaintext only goes into the sandbox.
 	env, err := w.envFor(ctx, d.ProjectID)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	// 3. Start the sandbox.
-	logger.System(fmt.Sprintf("Starting build container (%s · %g vCPU · %d MB · %ds limit)", p.Build.Image, p.Limits.CPUs, p.Limits.MemoryMB, int(timeout.Seconds())))
+	// 4. Start the sandbox.
+	logger.System(fmt.Sprintf("Starting build container (%s · %g vCPU · %d MB · %ds limit)", plan.image, p.Limits.CPUs, p.Limits.MemoryMB, int(timeout.Seconds())))
 	c, err := w.Sandbox.Create(buildCtx, builder.CreateOptions{
 		DeploymentID: d.ID,
-		Image:        p.Build.Image,
+		Image:        plan.image,
 		Env:          env,
-		RootDir:      p.Build.RootDir,
+		RootDir:      plan.rootDir,
 		Limits:       builder.Limits{CPUs: p.Limits.CPUs, MemoryMB: p.Limits.MemoryMB, PIDs: p.Limits.PIDs},
 	})
 	if err != nil {
@@ -212,37 +220,43 @@ func (w *Worker) build(ctx context.Context, p queue.BuildPayload, d store.Deploy
 		logger.System(fmt.Sprintf("Injected %d environment variable(s)", len(env)))
 	}
 
-	// 4. install -> build
-	install, build := p.Build.Install, p.Build.Command
-	if install == "" && build != "" {
-		install = builder.AutoInstall
-	}
-	if install != "" {
-		label := install
-		if install == builder.AutoInstall {
-			label = "auto-detected package manager"
-		}
-		logger.System("Running install command: " + label)
-		if err := c.Exec(buildCtx, install, logger); err != nil {
+	// 5. install -> build
+	if plan.install != "" {
+		logger.System("Running install command: " + plan.install)
+		if err := c.Exec(buildCtx, plan.install, logger); err != nil {
 			return 0, 0, w.wrapCtx(buildCtx, err)
 		}
 	}
-	if build != "" {
-		logger.System(fmt.Sprintf("Running build command: %q", build))
-		if err := c.Exec(buildCtx, build, logger); err != nil {
+	if plan.build != "" {
+		logger.System(fmt.Sprintf("Running build command: %q", plan.build))
+		if err := c.Exec(buildCtx, plan.build, logger); err != nil {
 			return 0, 0, w.wrapCtx(buildCtx, err)
 		}
 	} else {
-		logger.System("No build command, deploying files as-is")
+		logger.System("No build step needed, deploying files as-is")
 	}
 
-	// 5. Upload output to <deployId>/...
+	// 6. Locate the output folder (configured one first, then likely ones).
+	outDir, ok := c.FindOutput(buildCtx, plan.outputs)
+	if !ok {
+		msg := fmt.Sprintf("Could not find the build output. Looked for: %s. Set the Output Directory in project settings", strings.Join(plan.outputs, ", "))
+		if plan.framework == "nextjs" {
+			msg = "Next.js build produced no static export. Add output: 'export' to next.config.js (only static sites can be hosted)"
+		}
+		return 0, 0, &builder.UserError{Msg: msg}
+	}
+	if plan.override != "" && outDir != plan.override {
+		logger.Line("stderr", fmt.Sprintf("Warning: output directory %q not found, using %q instead", plan.override, outDir))
+	}
+	_ = w.Store.SetBuildInfo(ctx, d.ID, plan.framework, plan.node, plan.install, plan.build, outDir, plan.rootDir)
+
+	// 7. Upload output to <deployId>/...
 	if err := w.Store.SetStatus(ctx, d.ID, store.StatusUploading); err != nil {
 		return 0, 0, err
 	}
 	w.publishStatus(d.ID)
-	logger.System(fmt.Sprintf("Uploading build output from %q", p.Build.OutputDir))
-	files, size, err := w.upload(buildCtx, c, d.ID, p.Build.OutputDir)
+	logger.System(fmt.Sprintf("Uploading build output from %q", outDir))
+	files, size, err := w.upload(buildCtx, c, d.ID, outDir)
 	if err != nil {
 		return 0, 0, w.wrapCtx(buildCtx, err)
 	}
