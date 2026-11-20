@@ -16,8 +16,8 @@ interface EnvRow {
 }
 
 const EXAMPLES = [
-  { label: "Vite demo (this repo)", repo: "https://github.com/nikhitha-sk/mini-vercel", root: "examples/vite-demo", framework: "vite" },
-  { label: "Static HTML demo (this repo)", repo: "https://github.com/nikhitha-sk/mini-vercel", root: "examples/static-site", framework: "static" },
+  { label: "Vite demo (this repo)", repo: "https://github.com/nikhitha-sk/mini-vercel", root: "examples/vite-demo", framework: "auto" },
+  { label: "Static HTML demo (this repo)", repo: "https://github.com/nikhitha-sk/mini-vercel", root: "examples/static-site", framework: "auto" },
 ];
 
 export default function NewProjectPage() {
@@ -29,7 +29,7 @@ export default function NewProjectPage() {
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("main");
   const [name, setName] = useState("");
-  const [framework, setFramework] = useState("vite");
+  const [framework, setFramework] = useState("auto");
   const [rootDir, setRootDir] = useState("");
   const [installCmd, setInstallCmd] = useState("");
   const [buildCmd, setBuildCmd] = useState("");
@@ -122,7 +122,7 @@ export default function NewProjectPage() {
       <div className="border-b border-line bg-elevated">
         <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
           <h1 className="text-[32px] font-semibold tracking-tight">Let&apos;s build something new.</h1>
-          <p className="mt-2 text-sm text-muted">Import a Git repository or upload a zip. Static output only (Vite, Astro, Next.js export, plain HTML).</p>
+          <p className="mt-2 text-sm text-muted">Import any public GitHub repository or upload a zip. The framework, package manager and Node version are detected automatically.</p>
         </div>
       </div>
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -271,7 +271,7 @@ export default function NewProjectPage() {
                 <div>
                   <Label htmlFor="fw">Framework Preset</Label>
                   <Select id="fw" value={framework} onChange={(e) => setFramework(e.target.value)}>
-                    {(presets.length ? presets : [{ id: "vite", name: "Vite" } as Preset]).map((p) => (
+                    {(presets.length ? presets : [{ id: "auto", name: "Auto-detect (recommended)" } as Preset]).map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
                       </option>
@@ -287,10 +287,10 @@ export default function NewProjectPage() {
                     label="Install Command"
                     value={installCmd}
                     onChange={setInstallCmd}
-                    placeholder="Auto-detect: npm ci · yarn · pnpm · bun"
+                    placeholder="Auto-detected from your lockfile (npm, yarn, pnpm, bun)"
                   />
-                  <OverrideField label="Build Command" value={buildCmd} onChange={setBuildCmd} placeholder={preset?.buildCommand || "None"} />
-                  <OverrideField label="Output Directory" value={outputDir} onChange={setOutputDir} placeholder={preset?.outputDirectory || "dist"} />
+                  <OverrideField label="Build Command" value={buildCmd} onChange={setBuildCmd} placeholder={framework === "auto" ? "Auto-detected from package.json" : preset?.buildCommand || "None"} />
+                  <OverrideField label="Output Directory" value={outputDir} onChange={setOutputDir} placeholder={framework === "auto" ? "Auto-detected (dist, build, out, …)" : preset?.outputDirectory || "dist"} />
                 </div>
               </Collapsible>
 
