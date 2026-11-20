@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { ExternalLink, FileArchive, GitBranch, GitCommitHorizontal, Github, Globe, KeyRound, Lock, Plus, Rocket, Trash2, Upload, Webhook } from "lucide-react";
+import { ExternalLink, FileArchive, GitBranch, GitCommitHorizontal, Github, Globe, KeyRound, Lock, Plus, Rocket, Settings, Trash2, Upload, Webhook } from "lucide-react";
 import { AppShell, Container, PageHeader } from "@/components/shell";
-import { Button, ButtonLink, Card, CardHeader, EmptyState, ErrorBanner, Input, Kv, Label, Select, Skeleton, StatusBadge } from "@/components/ui";
+import { Button, ButtonLink, Card, CardHeader, EmptyState, ErrorBanner, Input, Kv, Label, Menu, Select, Skeleton, StatusBadge } from "@/components/ui";
 import { CopyButton, useFeedback } from "@/components/feedback";
 import { DeploymentList } from "@/components/deployment-list";
+import { useDeleteProjects } from "@/components/project-actions";
 import { PublicUrlCard } from "@/components/public-url";
 import { LiveUrlCard } from "@/components/live-hosting";
 import { API_URL, api, isActive, type Preset, type Project } from "@/lib/api";
@@ -67,6 +68,10 @@ function ProjectView() {
       setDeploying(false);
     }
   };
+  const deleteProjects = useDeleteProjects();
+  const deleteFromHeader = async () => {
+    if (p && (await deleteProjects([p])).length > 0) router.push("/");
+  };
   const deployZip = async (f: File | undefined) => {
     if (!f) return;
     setDeploying(true);
@@ -124,6 +129,15 @@ function ProjectView() {
                     Visit
                   </ButtonLink>
                 )}
+                <Menu
+                  label="More project actions"
+                  className="[&>button]:size-10 [&>button]:border-line [&>button]:bg-elevated"
+                  items={[
+                    { label: "Project settings", icon: <Settings className="size-4" />, href: href("settings") },
+                    { label: "Environment variables", icon: <KeyRound className="size-4" />, href: href("env") },
+                    { label: "Delete project", icon: <Trash2 className="size-4" />, danger: true, separated: true, onSelect: deleteFromHeader },
+                  ]}
+                />
               </>
             }
           />
@@ -357,7 +371,7 @@ function EnvTab({ projectId }: { projectId: string }) {
 
 function SettingsTab({ p, onSaved }: { p: Project; onSaved: () => void }) {
   const router = useRouter();
-  const { toast, confirm } = useFeedback();
+  const { toast } = useFeedback();
   const [presets, setPresets] = useState<Preset[]>([]);
   const [form, setForm] = useState({
     name: p.name,
@@ -389,21 +403,9 @@ function SettingsTab({ p, onSaved }: { p: Project; onSaved: () => void }) {
     }
   };
 
+  const deleteProjects = useDeleteProjects();
   const del = async () => {
-    const ok = await confirm({
-      title: `Delete ${p.name}?`,
-      description: "This removes the project, all deployments, environment variables and the production domain. This cannot be undone.",
-      confirmLabel: "Delete Project",
-      danger: true,
-    });
-    if (!ok) return;
-    try {
-      await api.deleteProject(p.id);
-      toast("success", "Project deleted");
-      router.push("/");
-    } catch (err) {
-      toast("error", "Could not delete", err instanceof Error ? err.message : String(err));
-    }
+    if ((await deleteProjects([p])).length > 0) router.push("/");
   };
 
   const webhook = `${API_URL || (typeof window !== "undefined" ? window.location.origin : "")}${p.webhookUrl ?? ""}`;
@@ -494,11 +496,21 @@ function SettingsTab({ p, onSaved }: { p: Project; onSaved: () => void }) {
         </Card>
       )}
 
-      <Card className="border-err/40">
-        <CardHeader title="Delete Project" description="Permanently remove this project and all of its deployments." />
-        <div className="flex justify-end border-t border-err/20 bg-err-bg/40 px-5 py-3">
-          <Button variant="danger" size="sm" icon={<Trash2 className="size-4" />} onClick={del}>
-            Delete
+      <Card className="overflow-hidden border-err/40">
+        <div className="border-b border-err/20 px-5 py-4">
+          <h3 className="text-[15px] font-semibold tracking-tight text-err">Danger Zone</h3>
+          <p className="mt-0.5 text-[13px] text-muted">Actions here are permanent and cannot be undone.</p>
+        </div>
+        <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Delete this project</p>
+            <p className="mt-0.5 text-[13px] text-muted">
+              Removes all deployments, build files, environment variables and the URL {hostOf(p.productionUrl)}
+              {p.liveUrl ? ", plus the permanent Netlify site" : ""}.
+            </p>
+          </div>
+          <Button variant="danger" size="sm" icon={<Trash2 className="size-4" />} onClick={del} className="shrink-0">
+            Delete Project
           </Button>
         </div>
       </Card>
