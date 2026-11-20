@@ -158,10 +158,14 @@ Paste any **public** repository URL into **Add New Project**. Leave everything o
 
 | Repository | Detected |
 | --- | --- |
-| `https://github.com/MaeWolff/astro-portfolio-template` | Astro · npm · Node 18 |
-| `https://github.com/LayZeeDK/github-pages-docusaurus` | Docusaurus · yarn · Node 18 |
+| `https://github.com/MaeWolff/astro-portfolio-template` | Astro · npm · Node 20 (repo asks for 18) |
+| `https://github.com/cobiwave/simplefolio` | Parcel · npm |
+| `https://github.com/codewithsadee/vcard-personal-portfolio` | Plain HTML, no build |
+| `https://github.com/adrianhajdin/project_3D_developer_portfolio` | Vite + React + Three.js (peer-dep conflict auto-fixed) |
+| `https://github.com/soumyajit4419/Portfolio` | Create React App · npm |
+| `https://github.com/ronald-hove/Angular-Portfolio-Template` | Angular (webpack-4 era, auto-fixed) |
+| `https://github.com/LayZeeDK/github-pages-docusaurus` | Docusaurus · yarn |
 | `https://github.com/riipandi/vite-react-template` | Vite + React · pnpm 10 · Node 24 |
-| `https://github.com/kevinshen56714/create-react-phaser3-app` | Create React App · npm |
 | `https://github.com/codeschool-projects/HTMLPortfolioProject` (branch `master`) | Plain HTML kept in `src/` |
 
 **Which projects work?** Anything that builds to static files: React/Vue/Svelte with Vite, Create React App, Angular, Astro, Docusaurus, Gatsby, Eleventy, VitePress, SvelteKit with `adapter-static`, Next.js with `output: 'export'`, Nuxt `generate`, and plain HTML/CSS/JS.
