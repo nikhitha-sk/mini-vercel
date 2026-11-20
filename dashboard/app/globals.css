@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens. Neutral, high-contrast console palette. */
+:root {
+  --bg: #fafafa;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #f4f4f5;
+  --bg-hover: #f1f1f2;
+  --fg: #0a0a0a;
+  --fg-muted: #5f5f66;
+  --fg-subtle: #8e8e96;
+  --border: #e6e6e9;
+  --border-strong: #d4d4d8;
+  --accent: #0a0a0a;
+  --accent-fg: #ffffff;
+  --ring: #0a72ef;
+  --link: #0a64d8;
+  --ok: #16a34a;
+  --ok-bg: #dcfce7;
+  --warn: #ca8a04;
+  --warn-bg: #fef9c3;
+  --err: #dc2626;
+  --err-bg: #fee2e2;
+  --info: #2563eb;
+  --info-bg: #dbeafe;
+  --term-bg: #0b0b0c;
+  --term-fg: #e4e4e7;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.dark {
+  --bg: #000000;
+  --bg-elevated: #0a0a0a;
+  --bg-subtle: #111113;
+  --bg-hover: #18181b;
+  --fg: #ededed;
+  --fg-muted: #a1a1aa;
+  --fg-subtle: #71717a;
+  --border: #232326;
+  --border-strong: #333338;
+  --accent: #ededed;
+  --accent-fg: #0a0a0a;
+  --ring: #3b8bff;
+  --link: #52a8ff;
+  --ok: #3fb950;
+  --ok-bg: rgba(63, 185, 80, 0.14);
+  --warn: #e3b341;
+  --warn-bg: rgba(227, 179, 65, 0.14);
+  --err: #f85149;
+  --err-bg: rgba(248, 81, 73, 0.14);
+  --info: #58a6ff;
+  --info-bg: rgba(88, 166, 255, 0.14);
+  --term-bg: #0a0a0a;
+  --term-fg: #e4e4e7;
+  --shadow: 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-elevated: var(--bg-elevated);
+  --color-subtle: var(--bg-subtle);
+  --color-hover: var(--bg-hover);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-faint: var(--fg-subtle);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-err: var(--err);
+  --color-err-bg: var(--err-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-term: var(--term-bg);
+  --color-term-fg: var(--term-fg);
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga", "calt";
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ring) 30%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.animate-pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-in { animation: fade-in 0.18s ease-out; }
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-subtle) 0px, var(--bg-hover) 120px, var(--bg-subtle) 240px);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 10px; height: 10px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
