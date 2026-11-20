@@ -23,6 +23,7 @@ import (
 	"github.com/nikhitha-sk/mini-vercel/internal/config"
 	"github.com/nikhitha-sk/mini-vercel/internal/ids"
 	"github.com/nikhitha-sk/mini-vercel/internal/logstream"
+	"github.com/nikhitha-sk/mini-vercel/internal/publish"
 	"github.com/nikhitha-sk/mini-vercel/internal/queue"
 	"github.com/nikhitha-sk/mini-vercel/internal/secrets"
 	"github.com/nikhitha-sk/mini-vercel/internal/storage"
@@ -36,6 +37,7 @@ type Worker struct {
 	Storage *storage.Storage
 	Sandbox *builder.Sandbox
 	Secrets *secrets.Box
+	Publish *publish.Publisher // optional permanent live host (Netlify)
 }
 
 var errCanceled = errors.New("canceled by user")
@@ -130,6 +132,7 @@ func (w *Worker) HandleBuild(ctx context.Context, t *asynq.Task) error {
 		_ = w.Store.TouchProject(context.Background(), proj.ID)
 	}
 	w.Redis.Publish(context.Background(), logstream.EdgeInvalidateChannel, w.Cfg.Hostname(ids.DeploymentLabel(d.ID)))
+	w.publishLive(d.ID, logger)
 	logger.System(fmt.Sprintf("Deployment ready in %s at %s", time.Since(start).Round(100*time.Millisecond), w.Cfg.PublicURL(ids.DeploymentLabel(d.ID))))
 	w.publishStatus(d.ID)
 	log.Info("deployment ready", "files", files, "bytes", size, "took", time.Since(start))
@@ -390,4 +393,59 @@ func humanBytes(n int64) string {
 	default:
 		return fmt.Sprintf("%d B", n)
 	}
+}
+
+// publishLive pushes a READY deployment to the permanent live host when one
+// is connected. Failures never fail the deployment: it is already READY.
+func (w *Worker) publishLive(id string, logger *logstream.Logger) {
+	if w.Publish == nil || !w.Publish.Connected(context.Background()) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	d, err := w.Store.GetDeployment(ctx, id)
+	if err != nil {
+		return
+	}
+	proj, err := w.Store.GetProject(ctx, d.ProjectID)
+	if err != nil {
+		return
+	}
+	logger.System("Publishing to Netlify for a permanent public URL...")
+	url, err := w.Publish.Publish(ctx, proj, d, logger.System)
+	if err != nil {
+		logger.Line("stderr", "Warning: could not publish to Netlify: "+err.Error())
+		return
+	}
+	logger.System("Live on the internet at " + url)
+}
+
+// HandlePublish republishes an existing READY deployment (e.g. one built
+// before Netlify was connected, or promoted from an older build).
+func (w *Worker) HandlePublish(ctx context.Context, t *asynq.Task) error {
+	var p queue.PublishPayload
+	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		return fmt.Errorf("bad payload: %v: %w", err, asynq.SkipRetry)
+	}
+	d, err := w.Store.GetDeployment(ctx, p.DeploymentID)
+	if err != nil || d.Status != store.StatusReady {
+		return nil
+	}
+	proj, err := w.Store.GetProject(ctx, d.ProjectID)
+	if err != nil {
+		return nil
+	}
+	logger, err := logstream.NewLogger(ctx, d.ID, w.Redis, w.Store)
+	if err != nil {
+		return err
+	}
+	defer logger.Close()
+	logger.System("Publishing to Netlify for a permanent public URL...")
+	url, err := w.Publish.Publish(ctx, proj, d, logger.System)
+	if err != nil {
+		logger.Line("stderr", "Warning: could not publish to Netlify: "+err.Error())
+		return err
+	}
+	logger.System("Live on the internet at " + url)
+	return nil
 }

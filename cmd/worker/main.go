@@ -15,6 +15,7 @@ import (
 
 	"github.com/nikhitha-sk/mini-vercel/internal/builder"
 	"github.com/nikhitha-sk/mini-vercel/internal/config"
+	"github.com/nikhitha-sk/mini-vercel/internal/publish"
 	"github.com/nikhitha-sk/mini-vercel/internal/queue"
 	"github.com/nikhitha-sk/mini-vercel/internal/secrets"
 	"github.com/nikhitha-sk/mini-vercel/internal/storage"
@@ -75,7 +76,7 @@ func main() {
 		go tm.Run(ctx)
 	}
 
-	w := &worker.Worker{Cfg: cfg, Store: st, Redis: rdb, Storage: sto, Sandbox: sb, Secrets: box}
+	w := &worker.Worker{Cfg: cfg, Store: st, Redis: rdb, Storage: sto, Sandbox: sb, Secrets: box, Publish: publish.New(st, sto, box)}
 	srv := asynq.NewServer(asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPass}, asynq.Config{
 		Concurrency:     cfg.WorkerConcurrent,
 		Queues:          map[string]int{queue.QueueBuild: 1},
@@ -86,6 +87,7 @@ func main() {
 	})
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(queue.TypeBuild, w.HandleBuild)
+	mux.HandleFunc(queue.TypePublish, w.HandlePublish)
 
 	slog.Info("worker started", "concurrency", cfg.WorkerConcurrent, "image", cfg.BuildImage)
 	if err := srv.Start(mux); err != nil {
