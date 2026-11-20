@@ -311,6 +311,22 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 				if ev.Log == nil || ev.Log.Seq <= lastSeq {
 					continue
 				}
+				// Lines published between our replay and the subscription may
+				// not have been persisted yet; wait for the worker's batch
+				// flush, then backfill the gap from Postgres.
+				if ev.Log.Seq > lastSeq+1 {
+					time.Sleep(400 * time.Millisecond)
+					if missing, err := s.Store.ListLogs(ctx, d.ID, lastSeq); err == nil {
+						for _, l := range missing {
+							if l.Seq >= ev.Log.Seq {
+								break
+							}
+							if !send("log", l) {
+								return
+							}
+						}
+					}
+				}
 				lastSeq = ev.Log.Seq
 				if !send("log", ev.Log) {
 					return
