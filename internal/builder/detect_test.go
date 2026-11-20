@@ -56,7 +56,7 @@ func TestDetectNextWithoutExportWarns(t *testing.T) {
 		"next.config.js":    "module.exports = {}",
 	})
 	d := Detect(dir)
-	if d.Framework != "nextjs" || d.Install != "npm ci || npm install" || len(d.Warnings) == 0 {
+	if d.Framework != "nextjs" || d.Install != "npm ci || npm install || npm install --legacy-peer-deps" || len(d.Warnings) == 0 {
 		t.Fatalf("unexpected: %+v", d)
 	}
 	write(t, dir, map[string]string{"next.config.js": "module.exports = { output: 'export' }"})

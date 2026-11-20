@@ -140,9 +140,10 @@ func installFor(dir, packageManager string) (pm, cmd string) {
 	case exists(filepath.Join(dir, "yarn.lock")) || strings.HasPrefix(packageManager, "yarn"):
 		return "yarn", "yarn install"
 	case exists(filepath.Join(dir, "package-lock.json")) || exists(filepath.Join(dir, "npm-shrinkwrap.json")):
-		return "npm", "npm ci || npm install"
+		// Fall back to --legacy-peer-deps for repos with peer-dependency conflicts (ERESOLVE).
+		return "npm", "npm ci || npm install || npm install --legacy-peer-deps"
 	default:
-		return "npm", "npm install"
+		return "npm", "npm install || npm install --legacy-peer-deps"
 	}
 }
 
