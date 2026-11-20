@@ -14,6 +14,7 @@ import (
 	"github.com/nikhitha-sk/mini-vercel/internal/builder"
 	"github.com/nikhitha-sk/mini-vercel/internal/ids"
 	"github.com/nikhitha-sk/mini-vercel/internal/store"
+	"github.com/nikhitha-sk/mini-vercel/internal/tunnel"
 )
 
 type projectView struct {
@@ -346,6 +347,7 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	s.Redis.Publish(r.Context(), tunnel.ReconcileChannel, p.ID)
 	for _, a := range aliases {
 		s.invalidateHost(a.Hostname)
 	}
@@ -458,4 +460,36 @@ func outputDir(d string) (string, error) {
 		return "", nil
 	}
 	return cleanDir(d)
+}
+
+// handleSetPublic turns the free public URL (Cloudflare quick tunnel) on or
+// off. The worker's tunnel manager does the actual work asynchronously.
+func (s *Server) handleSetPublic(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.loadProject(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := decode(r, &in); err != nil {
+		writeErr(w, 400, "bad_request", "Invalid JSON body")
+		return
+	}
+	if err := s.Store.SetPublicEnabled(r.Context(), p.ID, in.Enabled); err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	s.Redis.Publish(r.Context(), tunnel.ReconcileChannel, p.ID)
+	p, err := s.Store.GetProject(r.Context(), p.ID)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	v, err := s.projectView(r.Context(), p, true)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	writeJSON(w, 200, v)
 }

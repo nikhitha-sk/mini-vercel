@@ -67,6 +67,7 @@ func (s *Server) Routes() http.Handler {
 			r.Get("/projects/{projectID}", s.handleGetProject)
 			r.Patch("/projects/{projectID}", s.handleUpdateProject)
 			r.Delete("/projects/{projectID}", s.handleDeleteProject)
+			r.Post("/projects/{projectID}/public", s.handleSetPublic)
 
 			r.Get("/projects/{projectID}/env", s.handleListEnv)
 			r.Put("/projects/{projectID}/env", s.handleSetEnv)
