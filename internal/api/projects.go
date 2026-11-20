@@ -168,13 +168,12 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 422, "invalid_name", "Project name is required")
 		return
 	}
-	framework := str(in.Framework, "vite")
-	preset, ok := builder.PresetByID(framework)
-	if !ok {
+	framework := str(in.Framework, "auto")
+	if _, ok := builder.PresetByID(framework); !ok {
 		writeErr(w, 422, "invalid_framework", "Unknown framework preset")
 		return
 	}
-	out, err := cleanDir(str(in.OutputDir, preset.OutputDir))
+	out, err := outputDir(str(in.OutputDir, ""))
 	if err != nil {
 		writeErr(w, 422, "invalid_output", "Output directory "+err.Error())
 		return
@@ -202,7 +201,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	p, err := s.Store.CreateProject(r.Context(), store.Project{
 		ID: ids.Project(), OwnerID: s.UserID, Name: name, Slug: slug, RepoURL: repo,
 		Branch: str(in.Branch, "main"), Framework: framework,
-		InstallCmd: str(in.InstallCmd, preset.Install), BuildCmd: str(in.BuildCmd, preset.Build),
+		InstallCmd: str(in.InstallCmd, ""), BuildCmd: str(in.BuildCmd, ""),
 		OutputDir: out, RootDir: root, WebhookSecret: ids.Secret(),
 	})
 	if err != nil {
@@ -306,7 +305,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		p.BuildCmd = strings.TrimSpace(*in.BuildCmd)
 	}
 	if in.OutputDir != nil {
-		d, err := cleanDir(*in.OutputDir)
+		d, err := outputDir(*in.OutputDir)
 		if err != nil {
 			writeErr(w, 422, "invalid_output", "Output directory "+err.Error())
 			return
@@ -451,4 +450,12 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, st)
+}
+
+// outputDir validates an output directory override; "" means auto-detect.
+func outputDir(d string) (string, error) {
+	if strings.TrimSpace(d) == "" {
+		return "", nil
+	}
+	return cleanDir(d)
 }

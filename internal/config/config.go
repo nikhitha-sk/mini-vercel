@@ -71,9 +71,9 @@ func Load() Config {
 		DashboardDir: env("MV_DASHBOARD_DIR", ""),
 		CORSOrigins:  strings.Split(env("MV_CORS_ORIGINS", "http://localhost:3000"), ","),
 
-		BuildImage:       env("MV_BUILD_IMAGE", "node:20-alpine"),
+		BuildImage:       env("MV_BUILD_IMAGE", "node:22-alpine"),
 		BuildCPUs:        envFloat("MV_BUILD_CPUS", 1),
-		BuildMemoryMB:    int64(envInt("MV_BUILD_MEMORY_MB", 1024)),
+		BuildMemoryMB:    int64(envInt("MV_BUILD_MEMORY_MB", 2048)),
 		BuildPIDs:        int64(envInt("MV_BUILD_PIDS", 256)),
 		BuildTimeout:     time.Duration(envInt("MV_BUILD_TIMEOUT_SEC", 600)) * time.Second,
 		WorkerConcurrent: envInt("MV_WORKER_CONCURRENCY", 2),
