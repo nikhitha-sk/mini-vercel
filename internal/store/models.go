@@ -39,6 +39,9 @@ type Project struct {
 	OutputDir     string    `json:"outputDirectory"`
 	RootDir       string    `json:"rootDirectory"`
 	WebhookSecret string    `json:"-"`
+	PublicEnabled bool      `json:"publicEnabled"`
+	PublicURL     string    `json:"publicUrl"`
+	PublicStatus  string    `json:"publicStatus"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
@@ -60,6 +63,8 @@ type Deployment struct {
 	BuildCmd      string     `json:"buildCommand"`
 	OutputDir     string     `json:"outputDirectory"`
 	RootDir       string     `json:"rootDirectory"`
+	Framework     string     `json:"framework"`
+	NodeVersion   string     `json:"nodeVersion"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	StartedAt     *time.Time `json:"startedAt"`
 	FinishedAt    *time.Time `json:"finishedAt"`

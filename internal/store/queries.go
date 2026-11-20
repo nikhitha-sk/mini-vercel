@@ -24,11 +24,11 @@ func (s *Store) EnsureLocalUser(ctx context.Context, id string) (User, error) {
 
 // ---------- projects ----------
 
-const projectCols = `id, owner_id, name, slug, repo_url, branch, framework, install_cmd, build_cmd, output_dir, root_dir, webhook_secret, created_at, updated_at`
+const projectCols = `id, owner_id, name, slug, repo_url, branch, framework, install_cmd, build_cmd, output_dir, root_dir, webhook_secret, public_enabled, public_url, public_status, created_at, updated_at`
 
 func scanProject(r pgx.Row) (Project, error) {
 	var p Project
-	err := r.Scan(&p.ID, &p.OwnerID, &p.Name, &p.Slug, &p.RepoURL, &p.Branch, &p.Framework, &p.InstallCmd, &p.BuildCmd, &p.OutputDir, &p.RootDir, &p.WebhookSecret, &p.CreatedAt, &p.UpdatedAt)
+	err := r.Scan(&p.ID, &p.OwnerID, &p.Name, &p.Slug, &p.RepoURL, &p.Branch, &p.Framework, &p.InstallCmd, &p.BuildCmd, &p.OutputDir, &p.RootDir, &p.WebhookSecret, &p.PublicEnabled, &p.PublicURL, &p.PublicStatus, &p.CreatedAt, &p.UpdatedAt)
 	return p, notFound(err)
 }
 
@@ -86,11 +86,11 @@ func (s *Store) TouchProject(ctx context.Context, id string) error {
 
 // ---------- deployments ----------
 
-const deploymentCols = `id, project_id, source, trigger, branch, commit_sha, commit_message, status, error, attempt, file_count, size_bytes, install_cmd, build_cmd, output_dir, root_dir, created_at, started_at, finished_at`
+const deploymentCols = `id, project_id, source, trigger, branch, commit_sha, commit_message, status, error, attempt, file_count, size_bytes, install_cmd, build_cmd, output_dir, root_dir, framework, node_version, created_at, started_at, finished_at`
 
 func scanDeployment(r pgx.Row) (Deployment, error) {
 	var d Deployment
-	err := r.Scan(&d.ID, &d.ProjectID, &d.Source, &d.Trigger, &d.Branch, &d.CommitSHA, &d.CommitMessage, &d.Status, &d.Error, &d.Attempt, &d.FileCount, &d.SizeBytes, &d.InstallCmd, &d.BuildCmd, &d.OutputDir, &d.RootDir, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
+	err := r.Scan(&d.ID, &d.ProjectID, &d.Source, &d.Trigger, &d.Branch, &d.CommitSHA, &d.CommitMessage, &d.Status, &d.Error, &d.Attempt, &d.FileCount, &d.SizeBytes, &d.InstallCmd, &d.BuildCmd, &d.OutputDir, &d.RootDir, &d.Framework, &d.NodeVersion, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
 	return d, notFound(err)
 }
 
@@ -342,4 +342,45 @@ func prefixed(alias, cols string) string {
 		}
 	}
 	return out
+}
+
+// SetBuildInfo records the effective (auto-detected or overridden) build
+// settings on a deployment before it becomes READY.
+func (s *Store) SetBuildInfo(ctx context.Context, id, framework, nodeVersion, install, build, output, root string) error {
+	_, err := s.DB.Exec(ctx, `UPDATE deployments SET framework=$2, node_version=$3, install_cmd=$4, build_cmd=$5, output_dir=$6, root_dir=$7 WHERE id=$1`,
+		id, framework, nodeVersion, install, build, output, root)
+	return err
+}
+
+// ---------- public URLs (tunnels) ----------
+
+func (s *Store) SetPublicEnabled(ctx context.Context, projectID string, enabled bool) error {
+	status := "starting"
+	if !enabled {
+		status = ""
+	}
+	_, err := s.DB.Exec(ctx, `UPDATE projects SET public_enabled=$2, public_status=$3, public_url=CASE WHEN $2 THEN public_url ELSE '' END WHERE id=$1`, projectID, enabled, status)
+	return err
+}
+
+func (s *Store) SetPublicURL(ctx context.Context, projectID, url, status string) error {
+	_, err := s.DB.Exec(ctx, `UPDATE projects SET public_url=$2, public_status=$3 WHERE id=$1`, projectID, url, status)
+	return err
+}
+
+func (s *Store) ListPublicProjects(ctx context.Context) ([]Project, error) {
+	rows, err := s.DB.Query(ctx, `SELECT `+projectCols+` FROM projects WHERE public_enabled`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Project{}
+	for rows.Next() {
+		p, err := scanProject(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }
