@@ -43,9 +43,21 @@ func Open(ctx context.Context, url string) (*Store, error) {
 
 func (s *Store) Close() { s.DB.Close() }
 
-// Migrate applies embedded migrations in lexical order, once each.
+// Migrate applies embedded migrations in lexical order, once each. A
+// session-level advisory lock serialises concurrent starts (api + workers).
 func (s *Store) Migrate(ctx context.Context) error {
-	if _, err := s.DB.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`); err != nil {
+	conn, err := s.DB.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+	const lockID = 7_041_990_215
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1)`, lockID); err != nil {
+		return err
+	}
+	defer conn.Exec(context.Background(), `SELECT pg_advisory_unlock($1)`, lockID)
+
+	if _, err := conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`); err != nil {
 		return err
 	}
 	entries, err := migrationFS.ReadDir("migrations")
