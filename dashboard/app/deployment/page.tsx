@@ -206,7 +206,7 @@ function DeploymentView() {
               </div>
             )}
 
-            <LogViewer deploymentId={d.id} live={live} onStatus={(nd) => setD((cur) => ({ ...nd, isProduction: nd.isProduction || (cur?.isProduction ?? false) }))} />
+            <LogViewer deploymentId={d.id} live={live} onEnd={res.reload} onStatus={(nd) => setD((cur) => ({ ...nd, isProduction: nd.isProduction || (cur?.isProduction ?? false) }))} />
 
             <Card>
               <div className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-3">
@@ -217,8 +217,7 @@ function DeploymentView() {
                   {d.buildCommand || "none"}
                 </Kv>
                 <Kv label="Output directory" mono>
-                  {d.rootDirectory ? `${d.rootDirectory}/` : ""}
-                  {d.outputDirectory}
+                  {[d.rootDirectory, d.outputDirectory === "." ? "" : d.outputDirectory].filter(Boolean).join("/") || "."}
                 </Kv>
               </div>
             </Card>

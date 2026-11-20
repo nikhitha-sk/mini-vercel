@@ -12,10 +12,12 @@ import { clockTime, cn } from "@/lib/format";
 export function LogViewer({
   deploymentId,
   onStatus,
+  onEnd,
   live,
 }: {
   deploymentId: string;
   onStatus?: (d: Deployment) => void;
+  onEnd?: () => void;
   live: boolean;
 }) {
   const [lines, setLines] = useState<LogLine[]>([]);
@@ -26,6 +28,8 @@ export function LogViewer({
   const boxRef = useRef<HTMLDivElement>(null);
   const onStatusRef = useRef(onStatus);
   onStatusRef.current = onStatus;
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
 
   useEffect(() => {
     setLines([]);
@@ -53,6 +57,7 @@ export function LogViewer({
       flush();
       setConnected(false);
       es.close();
+      onEndRef.current?.();
     });
     es.onerror = () => setConnected(false);
     return () => {

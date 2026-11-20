@@ -108,8 +108,14 @@ func (w *Worker) HandleBuild(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 
-	// READY + promote alias in one step from the user's point of view.
-	if !w.finish(d.ID, store.StatusReady, "", files, size) {
+	// READY + promote alias in one step from the user's point of view: the
+	// READY status event is published only after the alias points here.
+	ok, err = w.Store.Finish(context.Background(), d.ID, store.StatusReady, "", files, size)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		w.publishStatus(d.ID)
 		return nil // canceled concurrently
 	}
 	proj, err := w.Store.GetProject(context.Background(), d.ProjectID)
