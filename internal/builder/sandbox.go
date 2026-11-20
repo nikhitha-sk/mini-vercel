@@ -122,6 +122,10 @@ func (s *Sandbox) Create(ctx context.Context, o CreateOptions) (*Container, erro
 
 	env := append([]string{
 		"HOME=" + homeDir,
+		// ~/.local/bin holds pnpm/yarn shims that run through corepack.
+		"PATH=" + homeDir + "/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"COREPACK_ENABLE_DOWNLOAD_PROMPT=0",
+		"COREPACK_ENABLE_STRICT=0",
 		"NPM_CONFIG_UPDATE_NOTIFIER=false",
 		"NPM_CONFIG_FUND=false",
 		"NPM_CONFIG_AUDIT=false",
@@ -182,7 +186,82 @@ func (c *Container) Start(ctx context.Context) error {
 	if err := c.sb.docker.ContainerStart(ctx, c.ID, container.StartOptions{}); err != nil {
 		return fmt.Errorf("start container: %w", err)
 	}
+	// Package-manager shims: pnpm and (berry) yarn via corepack, which honours
+	// the "packageManager" field without needing root.
+	const shims = `mkdir -p ~/.local/bin && ` +
+		`printf '#!/bin/sh\nexec corepack pnpm "$@"\n' > ~/.local/bin/pnpm && ` +
+		`printf '#!/bin/sh\nexec corepack pnpx "$@"\n' > ~/.local/bin/pnpx && ` +
+		`printf '#!/bin/sh\nexec corepack yarn "$@"\n' > ~/.local/bin/yarn && ` +
+		`chmod +x ~/.local/bin/*`
+	if _, code, err := c.ExecCapture(ctx, shims, homeDir); err != nil || code != 0 {
+		return fmt.Errorf("prepare sandbox (exit %d): %v", code, err)
+	}
 	return nil
+}
+
+// WorkDirExists reports whether the configured root directory exists.
+func (c *Container) WorkDirExists(ctx context.Context) bool {
+	_, err := c.sb.docker.ContainerStatPath(ctx, c.ID, c.work)
+	return err == nil
+}
+
+// UseRoot resets the working directory to the top of the source tree.
+func (c *Container) UseRoot() { c.work = appDir }
+
+// ExecCapture runs a command and returns its combined output and exit code.
+func (c *Container) ExecCapture(ctx context.Context, cmd, workDir string) (string, int, error) {
+	if workDir == "" {
+		workDir = c.work
+	}
+	ex, err := c.sb.docker.ContainerExecCreate(ctx, c.ID, container.ExecOptions{
+		Cmd: []string{"sh", "-c", cmd}, User: "node", WorkingDir: workDir, Env: c.env,
+		AttachStdout: true, AttachStderr: true,
+	})
+	if err != nil {
+		return "", -1, err
+	}
+	att, err := c.sb.docker.ContainerExecAttach(ctx, ex.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return "", -1, err
+	}
+	defer att.Close()
+	var out strings.Builder
+	if _, err := stdcopy.StdCopy(&out, &out, att.Reader); err != nil {
+		return "", -1, err
+	}
+	insp, err := c.sb.docker.ContainerExecInspect(ctx, ex.ID)
+	if err != nil {
+		return "", -1, err
+	}
+	return out.String(), insp.ExitCode, nil
+}
+
+// FindOutput returns the first candidate directory (relative to the working
+// directory) that contains an index.html, or failing that any files.
+// Candidates may contain shell globs such as dist/*/browser.
+func (c *Container) FindOutput(ctx context.Context, candidates []string) (string, bool) {
+	var parts []string
+	for _, cand := range candidates {
+		if strings.ContainsAny(cand, "'\"$`\\;&|<>(){}\n") {
+			continue
+		}
+		if strings.Contains(cand, "*") {
+			parts = append(parts, cand)
+		} else {
+			parts = append(parts, "'"+cand+"'")
+		}
+	}
+	if len(parts) == 0 {
+		return "", false
+	}
+	list := strings.Join(parts, " ")
+	script := `for d in ` + list + `; do if [ -f "$d/index.html" ]; then echo "$d"; exit 0; fi; done; ` +
+		`for d in ` + list + `; do if [ "$d" != "." ] && [ -d "$d" ] && [ -n "$(ls -A "$d" 2>/dev/null)" ]; then echo "$d"; exit 0; fi; done; exit 1`
+	out, code, err := c.ExecCapture(ctx, script, "")
+	if err != nil || code != 0 {
+		return "", false
+	}
+	return strings.TrimSpace(out), true
 }
 
 // Exec runs one shell command in the sandbox, streaming output to the logger.
