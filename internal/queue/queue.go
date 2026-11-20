@@ -73,3 +73,18 @@ func RetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 	}
 	return d
 }
+
+// TypePublish republishes an existing READY deployment to the live host.
+const TypePublish = "deployment:publish"
+
+type PublishPayload struct {
+	DeploymentID string `json:"deploymentId"`
+}
+
+func NewPublishTask(deploymentID string) (*asynq.Task, error) {
+	b, err := json.Marshal(PublishPayload{DeploymentID: deploymentID})
+	if err != nil {
+		return nil, err
+	}
+	return asynq.NewTask(TypePublish, b, asynq.Queue(QueueBuild), asynq.MaxRetry(2), asynq.Timeout(10*time.Minute)), nil
+}

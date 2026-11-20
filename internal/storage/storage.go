@@ -172,3 +172,19 @@ func ContentType(name string) string {
 	}
 	return "application/octet-stream"
 }
+
+// List returns every object key under prefix.
+func (s *Storage) List(ctx context.Context, prefix string) ([]string, error) {
+	var keys []string
+	p := s3.NewListObjectsV2Paginator(s.s3, &s3.ListObjectsV2Input{Bucket: &s.bucket, Prefix: &prefix})
+	for p.HasMorePages() {
+		page, err := p.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, o := range page.Contents {
+			keys = append(keys, aws.ToString(o.Key))
+		}
+	}
+	return keys, nil
+}
