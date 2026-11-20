@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "minivercel",
+      "credentials": [{ "accessKey": "minivercel", "secretKey": "minivercel-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}
