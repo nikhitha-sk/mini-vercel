@@ -47,6 +47,7 @@ type Config struct {
 }
 
 func Load() Config {
+	loadDotEnv(".env")
 	return Config{
 		DatabaseURL: env("MV_DATABASE_URL", "postgres://minivercel:minivercel@localhost:5433/minivercel?sslmode=disable"),
 		RedisAddr:   env("MV_REDIS_ADDR", "localhost:6380"),
