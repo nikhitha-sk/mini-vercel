@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownToLine, Clock, Download, Search, TerminalSquare } from "lucide-react";
+import { ChevronsDown, Clock, Download, Search, TerminalSquare } from "lucide-react";
 import { api, type Deployment, type LogLine } from "@/lib/api";
 import { clockTime, cn } from "@/lib/format";
 
@@ -111,7 +111,7 @@ export function LogViewer({
             <Clock className="size-3.5" />
           </ToolButton>
           <ToolButton active={follow} onClick={() => setFollow((v) => !v)} label="Follow output">
-            <ArrowDownToLine className="size-3.5" />
+            <ChevronsDown className="size-3.5" />
           </ToolButton>
           <ToolButton onClick={download} label="Download logs">
             <Download className="size-3.5" />

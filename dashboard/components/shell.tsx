@@ -102,7 +102,7 @@ export function AppShell({ crumbs = [], tabs, children }: { crumbs?: Crumb[]; ta
             <Logo />
             <span className="hidden text-[15px] font-semibold tracking-tight sm:inline">Mini Vercel</span>
           </Link>
-          <span className="text-line-strong">/</span>
+          <span className="hidden text-line-strong sm:inline">/</span>
           <div className="flex min-w-0 items-center gap-1.5 text-sm">
             <span className="hidden items-center gap-2 rounded-md px-1.5 py-1 font-medium sm:flex">
               <span className="flex size-5 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-orange-400 text-[10px] font-bold text-white">

@@ -144,7 +144,7 @@ function DeploymentView() {
             </div>
 
             <Card>
-              <div className="grid gap-6 p-5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-2 lg:grid-cols-4">
                 <Kv label="Status">
                   <StatusBadge status={d.status} />
                 </Kv>
@@ -209,7 +209,7 @@ function DeploymentView() {
             <LogViewer deploymentId={d.id} live={live} onStatus={(nd) => setD((cur) => ({ ...nd, isProduction: nd.isProduction || (cur?.isProduction ?? false) }))} />
 
             <Card>
-              <div className="grid gap-6 p-5 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-3">
                 <Kv label="Install command" mono>
                   {d.installCommand || "auto-detect"}
                 </Kv>

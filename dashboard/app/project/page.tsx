@@ -177,7 +177,7 @@ function OverviewTab({ p }: { p: Project }) {
           }
         />
         {d ? (
-          <div className="grid gap-6 p-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-6 p-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
             <a
               href={p.productionUrl}
               target="_blank"
@@ -249,7 +249,7 @@ function OverviewTab({ p }: { p: Project }) {
         )}
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <InfoTile title="Build settings" lines={[`Framework: ${p.framework}`, `Output: ${p.outputDirectory}`, p.rootDirectory ? `Root: ${p.rootDirectory}` : "Root: ./"]} href={`/project?id=${p.id}&tab=settings`} />
         <InfoTile title="Git" lines={p.repoUrl ? [repoPath(p.repoUrl), `Production branch: ${p.branch}`] : ["Not connected"]} href={`/project?id=${p.id}&tab=settings`} />
         <InfoTile title="Deployments" lines={[latest ? `Latest: ${timeAgo(latest.createdAt)}` : "None yet", "Instant rollback available"]} href={`/project?id=${p.id}&tab=deployments`} />
@@ -316,7 +316,7 @@ function EnvTab({ projectId }: { projectId: string }) {
             </span>
           }
         />
-        <form onSubmit={add} className="grid gap-3 p-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <form onSubmit={add} className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <div>
             <Label htmlFor="ek">Key</Label>
             <Input id="ek" value={key} onChange={(e) => setKey(e.target.value)} placeholder="VITE_API_URL" mono />
@@ -408,7 +408,7 @@ function SettingsTab({ p, onSaved }: { p: Project; onSaved: () => void }) {
       <form onSubmit={save}>
         <Card>
           <CardHeader title="General & Build" description="Settings are snapshotted into each deployment, so existing deployments never change." />
-          <div className="grid gap-5 p-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2">
             <div>
               <Label htmlFor="s-name">Project Name</Label>
               <Input id="s-name" value={form.name} onChange={set("name")} />

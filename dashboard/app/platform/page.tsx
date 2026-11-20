@@ -23,7 +23,7 @@ export default function PlatformPage() {
       <Container className="space-y-6">
         <Card>
           <CardHeader title="Deployment pipeline" description="The API never builds anything. Workers do, and the edge only reads, so each part scales on its own." />
-          <ol className="grid gap-px overflow-hidden bg-line md:grid-cols-5">
+          <ol className="grid grid-cols-1 gap-px overflow-hidden bg-line md:grid-cols-5">
             {FLOW.map((s, i) => (
               <li key={s.title} className="relative bg-elevated p-5">
                 <div className="flex items-center gap-2 text-[13px] font-semibold">
@@ -37,7 +37,7 @@ export default function PlatformPage() {
           </ol>
         </Card>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Card>
             <CardHeader
               title={
@@ -94,7 +94,7 @@ export default function PlatformPage() {
 
         <Card>
           <CardHeader title="Scope" description="Static hosting platform. Intentionally out of scope: serverless functions and server-side rendering." />
-          <div className="grid gap-4 p-5 text-[13px] text-muted sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 p-5 text-[13px] text-muted sm:grid-cols-3">
             <p><span className="font-medium text-fg">Supported:</span> Vite, Astro, Next.js static export, Create React App, Docusaurus, plain HTML.</p>
             <p><span className="font-medium text-fg">SPA routing:</span> unknown paths fall back to <span className="font-mono">index.html</span>; a shipped <span className="font-mono">404.html</span> is honoured for assets.</p>
             <p><span className="font-medium text-fg">Caching:</span> hashed assets get <span className="font-mono">immutable</span>, HTML is revalidated with ETags.</p>

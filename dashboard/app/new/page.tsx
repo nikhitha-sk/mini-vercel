@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ChevronDown, FileArchive, Github, Lock, Minus, Plus, Rocket, ShieldCheck, Upload } from "lucide-react";
-import { AppShell, Container } from "@/components/shell";
+import { AppShell } from "@/components/shell";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
 import { api, type PlatformConfig, type Preset } from "@/lib/api";
@@ -125,7 +125,7 @@ export default function NewProjectPage() {
           <p className="mt-2 text-sm text-muted">Import a Git repository or upload a zip. Static output only (Vite, Astro, Next.js export, plain HTML).</p>
         </div>
       </div>
-      <Container className="max-w-3xl">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <form onSubmit={submit} className="space-y-6">
           <Card>
             <div className="border-b border-line p-5">
@@ -191,7 +191,7 @@ export default function NewProjectPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="branch">Branch</Label>
                       <Input id="branch" value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="main" mono />
@@ -254,7 +254,7 @@ export default function NewProjectPage() {
           <Card>
             <div className="space-y-5 p-5">
               <h2 className="text-[15px] font-semibold">Configure Project</h2>
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="name">Project Name</Label>
                   <Input
@@ -348,7 +348,7 @@ export default function NewProjectPage() {
             </Button>
           </div>
         </form>
-      </Container>
+      </div>
     </AppShell>
   );
 }

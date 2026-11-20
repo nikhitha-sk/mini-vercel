@@ -41,11 +41,11 @@ export default function OverviewPage() {
           </ButtonLink>
         </div>
 
-        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <section aria-label="Projects">
             {projects.error && <ErrorBanner message={projects.error} onRetry={projects.reload} />}
             {projects.loading && !projects.data && (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {[0, 1, 2, 3].map((i) => (
                   <Card key={i} className="p-5">
                     <Skeleton className="h-8 w-8 rounded-full" />
@@ -75,7 +75,7 @@ export default function OverviewPage() {
                 <EmptyState icon={<Search className="size-5" />} title="No matching projects" description={`Nothing matches “${q}”.`} />
               </Card>
             )}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {filtered.map((p) => (
                 <ProjectCard key={p.id} p={p} />
               ))}
