@@ -209,9 +209,13 @@ function DeploymentView() {
             <LogViewer deploymentId={d.id} live={live} onEnd={res.reload} onStatus={(nd) => setD((cur) => ({ ...nd, isProduction: nd.isProduction || (cur?.isProduction ?? false) }))} />
 
             <Card>
-              <div className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                <Kv label="Framework">
+                  {d.framework ? frameworkName(d.framework) : "Auto-detect"}
+                  {d.nodeVersion && <span className="text-muted"> · Node {d.nodeVersion}</span>}
+                </Kv>
                 <Kv label="Install command" mono>
-                  {d.installCommand || "auto-detect"}
+                  {d.installCommand || (live ? "auto-detect" : "none")}
                 </Kv>
                 <Kv label="Build command" mono>
                   {d.buildCommand || "none"}
@@ -271,4 +275,13 @@ function Pipeline({ status, error }: { status: Status; error: string }) {
       )}
     </div>
   );
+}
+
+const FRAMEWORKS: Record<string, string> = {
+  static: "Static HTML", node: "Node.js", nextjs: "Next.js", nuxt: "Nuxt", astro: "Astro", sveltekit: "SvelteKit", gatsby: "Gatsby",
+  docusaurus: "Docusaurus", vitepress: "VitePress", vuepress: "VuePress", angular: "Angular", cra: "Create React App",
+  "vue-cli": "Vue CLI", eleventy: "Eleventy", hexo: "Hexo", vite: "Vite", parcel: "Parcel", webpack: "webpack",
+};
+function frameworkName(id: string) {
+  return FRAMEWORKS[id] ?? id;
 }

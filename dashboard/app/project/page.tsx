@@ -8,6 +8,7 @@ import { AppShell, Container, PageHeader } from "@/components/shell";
 import { Button, ButtonLink, Card, CardHeader, EmptyState, ErrorBanner, Input, Kv, Label, Select, Skeleton, StatusBadge } from "@/components/ui";
 import { CopyButton, useFeedback } from "@/components/feedback";
 import { DeploymentList } from "@/components/deployment-list";
+import { PublicUrlCard } from "@/components/public-url";
 import { API_URL, api, isActive, type Preset, type Project } from "@/lib/api";
 import { useResource, useTick } from "@/lib/hooks";
 import { duration, hostOf, repoPath, shortSha, timeAgo } from "@/lib/format";
@@ -34,7 +35,7 @@ function ProjectView() {
 
   const project = useResource(() => api.project(id), [id], {
     pollMs: 2500,
-    pollWhile: (p) => !!p.latestDeployment && isActive(p.latestDeployment.status),
+    pollWhile: (p) => (!!p.latestDeployment && isActive(p.latestDeployment.status)) || (p.publicEnabled && p.publicStatus !== "live"),
   });
   const deployments = useResource(() => api.deployments(id), [id], {
     pollMs: 2500,
@@ -126,7 +127,7 @@ function ProjectView() {
             }
           />
           <Container>
-            {tab === "overview" && <OverviewTab p={p} />}
+            {tab === "overview" && <OverviewTab p={p} onChange={project.reload} />}
             {tab === "deployments" && (
               <Card className="overflow-hidden">
                 <CardHeader
@@ -147,7 +148,7 @@ function ProjectView() {
   );
 }
 
-function OverviewTab({ p }: { p: Project }) {
+function OverviewTab({ p, onChange }: { p: Project; onChange: () => void }) {
   const d = p.productionDeployment;
   const latest = p.latestDeployment;
   return (
@@ -163,6 +164,8 @@ function OverviewTab({ p }: { p: Project }) {
           <span className="font-medium underline underline-offset-2">View build logs</span>
         </Link>
       )}
+
+      <PublicUrlCard project={p} onChange={onChange} />
 
       <Card className="overflow-hidden">
         <CardHeader
@@ -250,7 +253,7 @@ function OverviewTab({ p }: { p: Project }) {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <InfoTile title="Build settings" lines={[`Framework: ${p.framework}`, `Output: ${p.outputDirectory}`, p.rootDirectory ? `Root: ${p.rootDirectory}` : "Root: ./"]} href={`/project?id=${p.id}&tab=settings`} />
+        <InfoTile title="Build settings" lines={[`Framework: ${p.framework === "auto" ? "auto-detect" : p.framework}`, `Output: ${p.outputDirectory || "auto-detect"}`, p.rootDirectory ? `Root: ${p.rootDirectory}` : "Root: ./"]} href={`/project?id=${p.id}&tab=settings`} />
         <InfoTile title="Git" lines={p.repoUrl ? [repoPath(p.repoUrl), `Production branch: ${p.branch}`] : ["Not connected"]} href={`/project?id=${p.id}&tab=settings`} />
         <InfoTile title="Deployments" lines={[latest ? `Latest: ${timeAgo(latest.createdAt)}` : "None yet", "Instant rollback available"]} href={`/project?id=${p.id}&tab=deployments`} />
       </div>
@@ -439,15 +442,15 @@ function SettingsTab({ p, onSaved }: { p: Project; onSaved: () => void }) {
               <Label htmlFor="s-install" hint="Empty = auto-detect">
                 Install Command
               </Label>
-              <Input id="s-install" value={form.installCommand} onChange={set("installCommand")} placeholder="npm ci" mono />
+              <Input id="s-install" value={form.installCommand} onChange={set("installCommand")} placeholder="Auto-detected" mono />
             </div>
             <div>
-              <Label htmlFor="s-build">Build Command</Label>
-              <Input id="s-build" value={form.buildCommand} onChange={set("buildCommand")} placeholder="npm run build" mono />
+              <Label htmlFor="s-build" hint="Empty = auto-detect">Build Command</Label>
+              <Input id="s-build" value={form.buildCommand} onChange={set("buildCommand")} placeholder="Auto-detected" mono />
             </div>
             <div>
-              <Label htmlFor="s-out">Output Directory</Label>
-              <Input id="s-out" value={form.outputDirectory} onChange={set("outputDirectory")} placeholder="dist" mono />
+              <Label htmlFor="s-out" hint="Empty = auto-detect">Output Directory</Label>
+              <Input id="s-out" value={form.outputDirectory} onChange={set("outputDirectory")} placeholder="Auto-detected" mono />
             </div>
           </div>
           <div className="flex items-center justify-between gap-4 border-t border-line bg-subtle px-5 py-3">

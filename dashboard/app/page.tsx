@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Activity, ArrowUpRight, Box, CheckCircle2, Clock3, Github, Plus, Rocket, Search, Timer } from "lucide-react";
+import { Activity, ArrowUpRight, Box, CheckCircle2, Clock3, Github, Globe2, Plus, Rocket, Search, Timer } from "lucide-react";
 import { AppShell, Container } from "@/components/shell";
 import { Avatar, ButtonLink, Card, EmptyState, ErrorBanner, Input, Skeleton, StatusDot } from "@/components/ui";
 import { api, isActive, type Project, type RecentDeployment, type Stats } from "@/lib/api";
@@ -170,6 +170,18 @@ function ProjectCard({ p }: { p: Project }) {
           </a>
         )}
       </div>
+
+      {p.publicStatus === "live" && p.publicUrl && (
+        <a
+          href={p.publicUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="relative z-10 mt-3 inline-flex max-w-full items-center gap-1.5 self-start text-[13px] font-medium text-link hover:underline"
+        >
+          <Globe2 className="size-3.5 shrink-0" />
+          <span className="truncate">{hostOf(p.publicUrl)}</span>
+        </a>
+      )}
 
       {p.repoUrl && (
         <div className="mt-4 inline-flex max-w-full items-center gap-1.5 self-start rounded-full bg-subtle px-2.5 py-1 text-xs font-medium text-muted">

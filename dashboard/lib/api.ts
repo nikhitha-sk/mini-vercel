@@ -26,6 +26,8 @@ export interface Deployment {
   buildCommand: string;
   outputDirectory: string;
   rootDirectory: string;
+  framework: string;
+  nodeVersion: string;
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
@@ -60,6 +62,9 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   productionUrl: string;
+  publicEnabled: boolean;
+  publicUrl: string;
+  publicStatus: "" | "starting" | "live" | "error";
   productionDeployment: Deployment | null;
   latestDeployment: Deployment | null;
   webhookUrl?: string;
@@ -161,6 +166,8 @@ export const api = {
   updateProject: (id: string, body: Record<string, unknown>) =>
     request<Project>(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteProject: (id: string) => request<void>(`/projects/${id}`, { method: "DELETE" }),
+  setPublic: (id: string, enabled: boolean) =>
+    request<Project>(`/projects/${id}/public`, { method: "POST", body: JSON.stringify({ enabled }) }),
 
   env: (id: string) => request<EnvVar[]>(`/projects/${id}/env`),
   setEnv: (id: string, key: string, value: string) =>
