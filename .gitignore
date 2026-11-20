@@ -1,0 +1,42 @@
+# Project spec / private docs (kept locally, not published)
+*.pdf
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Go build output
+/bin/
+/dist/
+*.exe
+*.exe~
+*.test
+*.out
+coverage.*
+
+# Dashboard (Next.js)
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+dashboard/next-env.d.ts
+dashboard/*.tsbuildinfo
+node_modules/
+
+# Local data volumes / temp
+/data/
+/tmp/
+*.log
+
+# Editors & OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code local settings
+.claude/settings.local.json
