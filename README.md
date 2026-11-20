@@ -16,7 +16,8 @@
 
 - **Git or zip deploys.** Public HTTPS repo + branch + root directory, or drag-and-drop a `.zip`.
 - **Zero-config builds for real projects.** Mini Vercel detects the framework (Vite, Next.js export, Astro, CRA, Angular, SvelteKit, Nuxt, Gatsby, Docusaurus, VitePress, Eleventy, plain HTML, …), the package manager (npm / yarn / pnpm / bun via corepack), the Node version (`.nvmrc` / `engines.node` → 18, 20, 22 or 24) and the output folder. Every value can still be overridden.
-- **Free public URLs.** One click on **Go Public** gives a project an `https://<random-words>.trycloudflare.com` link that works from any device, through a Cloudflare quick tunnel. It's free, with no account, domain or port forwarding needed.
+- **Permanent live URLs (free).** Connect a free Netlify account once and every deployment is published to `https://<project>.netlify.app`. The link works everywhere, 24/7, and rollback is mirrored instantly.
+- **Quick share links.** One click on **Go Public** gives a project an `https://<random-words>.trycloudflare.com` link that works from any device, through a Cloudflare quick tunnel. It's free, with no account, domain or port forwarding needed.
 - **Sandboxed builds.** Every build gets a fresh `node:<version>-alpine` container: non-root, all capabilities dropped, `no-new-privileges`, 1 vCPU, 2 GB RAM (no swap), 256 PIDs, 10-minute limit. The container is removed afterwards, even on failure. The Docker socket is never mounted into it.
 - **Live build logs.** stdout/stderr are streamed over Server-Sent Events (Redis pub/sub) and stored in Postgres for later.
 - **Immutable deployments.** Every deployment keeps its own URL forever: `dpl-<id>.localhost:8080`.
@@ -143,7 +144,16 @@ The repo ships with test projects in [`examples/`](examples), so you don't need 
 2. Drop any zip from `examples/zips/` (`static-site.zip` or `vite-demo.zip`). Leave the framework on **Auto-detect**.
 3. Deploy, then visit the site. For `static-site`, also try `/about` and a missing page like `/nope.png` (you should get the custom 404).
 
-### Test 2b: share it on the internet (free)
+### Test 2a: permanent live URL (free, like Vercel)
+
+1. Open **Platform** → *Permanent live URLs*. Create a free [Netlify](https://app.netlify.com/signup) account (no credit card), make a **personal access token** (User settings → Applications → *New access token*, no expiration) and paste it into Mini Vercel.
+2. Open any project with a **Ready** deployment and click **Publish now**. From then on, every new deployment is published automatically.
+3. You get a permanent link like `https://my-portfolio.netlify.app`. It works on any phone or computer, even when your PC is off.
+4. **Promote / Rollback** in Mini Vercel switches the live site instantly too.
+
+> How it works: Mini Vercel still does the platform work (sandboxed builds, logs, immutable deployments, rollback). After a build it zips the output from object storage and uploads it to Netlify's API as a new deploy. Rollback calls Netlify's *restore deploy*.
+
+### Test 2b: quick temporary share link (no account)
 
 1. Open a project that has a **Ready** deployment.
 2. Click **Go Public** on the *Public URL* card. After about 10 seconds you get a link like `https://some-random-words.trycloudflare.com`.
