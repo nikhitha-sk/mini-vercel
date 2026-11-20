@@ -86,8 +86,8 @@ Double-click **`run.bat`** in the project folder. This local launcher is git-ign
 1. start Docker Desktop if it isn't running, and wait for it
 2. start Postgres, Redis and S3 storage (`docker compose up -d`)
 3. build the Go services and, on first run, the dashboard
-4. open three windows (**API**, **Build Worker**, **Edge Router**)
-5. open the dashboard at **http://localhost:4000**
+4. start the **API**, **Build Worker** and **Edge Router** in the background, with no extra windows; their output goes to `logs\api.log`, `logs\worker.log` and `logs\edge.log`
+5. open the dashboard at **http://localhost:4000** and close its own window
 
 Stop everything with `run.bat stop`.
 
@@ -182,7 +182,7 @@ The deployment ends in **Error**, stderr is shown in red, nothing is served, and
 
 - **Environment Variables** tab: add a variable and redeploy. The logs show "Injected 1 environment variable(s)".
 - Start a deploy and click **Cancel** while it's building.
-- Kill the **Build Worker** window mid-build and start it again. The job is re-delivered and finishes (attempt 2).
+- Kill `mv-worker.exe` in Task Manager mid-build and run `run.bat` again. The job is re-delivered and finishes (attempt 2).
 
 ### API / command line
 
@@ -212,14 +212,14 @@ cd dashboard && npx tsc --noEmit     # dashboard type-check
 
 | Problem | Fix |
 | --- | --- |
-| "API offline" banner | The API window isn't running. Start it (`run.bat` or `go run ./cmd/api`). |
-| Deploy stuck in **Queued** | The Build Worker isn't running, or Docker Desktop is stopped. |
+| "API offline" banner | The API isn't running. Run `run.bat` again, or check `logs/api.log`. |
+| Deploy stuck in **Queued** | The Build Worker isn't running or Docker Desktop is stopped. Check `logs/worker.log`. |
 | `npm install` fails in the build | The build container needs internet access to reach the npm registry. |
 | Site URL doesn't open | Use Chrome/Edge/Firefox. `*.localhost` must resolve to 127.0.0.1. |
 | Port already in use | Postgres uses 5433, Redis 6380, S3 9000, API 4000, edge 8080. |
 | "Could not find the build output" | Set **Output Directory** in project Settings to the folder your build creates. |
 | Next.js "no static export" error | Add `output: 'export'` to `next.config.js`. Server features can't be hosted statically. |
-| Go Public stays on "Creating…" | It needs internet access to Cloudflare. It retries every 10 seconds; check the Worker window for errors. |
+| Go Public stays on "Creating…" | It needs internet access to Cloudflare. It retries every 10 seconds; check `logs/worker.log`. |
 | Big project fails with exit 137 | The build ran out of memory. Raise `MV_BUILD_MEMORY_MB` (default 2048). |
 
 ---
