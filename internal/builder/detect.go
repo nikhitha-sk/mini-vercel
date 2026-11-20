@@ -72,8 +72,13 @@ func Detect(dir string) Detection {
 		// No package.json: a plain static site. Serve the root, or public/ if
 		// the HTML lives there.
 		d.OutputDirs = []string{"."}
-		if !exists(filepath.Join(dir, "index.html")) && exists(filepath.Join(dir, "public", "index.html")) {
-			d.OutputDirs = []string{"public", "."}
+		if !exists(filepath.Join(dir, "index.html")) {
+			for _, sub := range []string{"public", "src", "docs", "site", "www", "dist", "build"} {
+				if exists(filepath.Join(dir, sub, "index.html")) {
+					d.OutputDirs = []string{sub, "."}
+					break
+				}
+			}
 		}
 		return d
 	}
@@ -113,7 +118,7 @@ func Detect(dir string) Detection {
 		d.Warnings = append(d.Warnings, "Next.js app without output: 'export' in next.config. Only static exports can be hosted; pages that need a server (API routes, SSR) will not work")
 	}
 	if !d.HasBuildScript && d.Build == "" {
-		d.OutputDirs = append(d.OutputDirs, "public", ".")
+		d.OutputDirs = append(d.OutputDirs, "public", ".", "src")
 	}
 	d.OutputDirs = append(d.OutputDirs, commonOutputs...)
 	d.OutputDirs = dedupe(d.OutputDirs)
@@ -127,7 +132,8 @@ func Detect(dir string) Detection {
 func installFor(dir, packageManager string) (pm, cmd string) {
 	switch {
 	case exists(filepath.Join(dir, "pnpm-lock.yaml")) || strings.HasPrefix(packageManager, "pnpm"):
-		return "pnpm", "pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile"
+		bin := pnpmBinary(dir, packageManager)
+		return "pnpm", bin + " install --frozen-lockfile || " + bin + " install --no-frozen-lockfile"
 	case exists(filepath.Join(dir, "bun.lockb")) || exists(filepath.Join(dir, "bun.lock")) || strings.HasPrefix(packageManager, "bun"):
 		return "bun", "npx --yes bun install"
 	case exists(filepath.Join(dir, "yarn.lock")) || strings.HasPrefix(packageManager, "yarn"):
@@ -139,10 +145,49 @@ func installFor(dir, packageManager string) (pm, cmd string) {
 	}
 }
 
+var (
+	lockVersionRe = regexp.MustCompile(`(?m)^lockfileVersion:\s*'?(\d+)(?:\.(\d+))?`)
+	pmMajorRe     = regexp.MustCompile(`^pnpm@(\d+)`)
+)
+
+// pnpmBinary returns the pnpm invocation that matches the repository. With a
+// "packageManager" field corepack already picks the exact version; otherwise
+// the lockfile format tells us which major wrote it (5.3→6, 5.4→7, 6→8, 9→9).
+// pnpm 10+ blocks dependency build scripts by default; the sandbox is the
+// security boundary here, so they are allowed (as on Vercel).
+func pnpmBinary(dir, packageManager string) string {
+	if m := pmMajorRe.FindStringSubmatch(packageManager); m != nil {
+		if n, _ := strconv.Atoi(m[1]); n >= 10 {
+			return "pnpm --config.dangerously-allow-all-builds=true"
+		}
+		return "pnpm"
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "pnpm-lock.yaml"))
+	if err != nil {
+		return "corepack pnpm@9"
+	}
+	m := lockVersionRe.FindSubmatch(b)
+	if m == nil {
+		return "corepack pnpm@9"
+	}
+	major, _ := strconv.Atoi(string(m[1]))
+	minor, _ := strconv.Atoi(string(m[2]))
+	switch {
+	case major == 5 && minor <= 3:
+		return "corepack pnpm@6"
+	case major == 5:
+		return "corepack pnpm@7"
+	case major == 6:
+		return "corepack pnpm@8"
+	default:
+		return "corepack pnpm@9"
+	}
+}
+
 func runScript(pm, script string) string {
 	switch pm {
 	case "pnpm":
-		return "pnpm run " + script
+		return "npm run " + script // node_modules/.bin is on PATH; works with any pnpm layout
 	case "yarn":
 		return "yarn run " + script
 	case "bun":

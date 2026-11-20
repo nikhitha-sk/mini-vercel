@@ -237,7 +237,7 @@ func (w *Worker) build(ctx context.Context, p queue.BuildPayload, d store.Deploy
 	}
 
 	// 6. Locate the output folder (configured one first, then likely ones).
-	outDir, ok := c.FindOutput(buildCtx, plan.outputs)
+	outDir, ok := c.FindOutput(buildCtx, plan.outputs, plan.build == "")
 	if !ok {
 		msg := fmt.Sprintf("Could not find the build output. Looked for: %s. Set the Output Directory in project settings", strings.Join(plan.outputs, ", "))
 		if plan.framework == "nextjs" {

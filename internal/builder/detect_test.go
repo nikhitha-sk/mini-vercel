@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -42,7 +43,7 @@ func TestDetectViteWithPnpm(t *testing.T) {
 		"pnpm-lock.yaml": "lockfileVersion: '9.0'",
 	})
 	d := Detect(dir)
-	if d.Framework != "vite" || d.PackageManager != "pnpm" || d.Build != "pnpm run build" || d.OutputDirs[0] != "dist" || d.NodeMajor != 20 {
+	if d.Framework != "vite" || d.PackageManager != "pnpm" || d.Build != "npm run build" || d.OutputDirs[0] != "dist" || d.NodeMajor != 20 {
 		t.Fatalf("unexpected: %+v", d)
 	}
 }
@@ -83,5 +84,28 @@ func TestDetectNoBuildScript(t *testing.T) {
 	d := Detect(dir)
 	if d.Build != "" || !reflect.DeepEqual(d.OutputDirs[:2], []string{"public", "."}) {
 		t.Fatalf("unexpected: %+v", d)
+	}
+}
+
+func TestPnpmVersionFromLockfile(t *testing.T) {
+	for lock, want := range map[string]string{
+		"lockfileVersion: 5.3\n":   "corepack pnpm@6",
+		"lockfileVersion: 5.4\n":   "corepack pnpm@7",
+		"lockfileVersion: '6.0'\n": "corepack pnpm@8",
+		"lockfileVersion: '9.0'\n": "corepack pnpm@9",
+	} {
+		dir := t.TempDir()
+		write(t, dir, map[string]string{"package.json": `{"devDependencies":{"vite":"6"},"scripts":{"build":"vite build"}}`, "pnpm-lock.yaml": lock})
+		if d := Detect(dir); !strings.HasPrefix(d.Install, want+" install") {
+			t.Errorf("%q: install = %q, want prefix %q", lock, d.Install, want)
+		}
+	}
+}
+
+func TestStaticSiteInSrc(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, map[string]string{"src/index.html": "x", "README.md": "y"})
+	if d := Detect(dir); d.OutputDirs[0] != "src" {
+		t.Fatalf("got %v", d.OutputDirs)
 	}
 }

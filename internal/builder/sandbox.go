@@ -239,7 +239,22 @@ func (c *Container) ExecCapture(ctx context.Context, cmd, workDir string) (strin
 // FindOutput returns the first candidate directory (relative to the working
 // directory) that contains an index.html, or failing that any files.
 // Candidates may contain shell globs such as dist/*/browser.
-func (c *Container) FindOutput(ctx context.Context, candidates []string) (string, bool) {
+func (c *Container) FindOutput(ctx context.Context, candidates []string, deep bool) (string, bool) {
+	if dir, ok := c.findOutput(ctx, candidates); ok || !deep {
+		return dir, ok
+	}
+	// No build step: fall back to the shallowest folder containing an
+	// index.html (e.g. a site kept in src/ or website/).
+	out, code, err := c.ExecCapture(ctx,
+		`find . -maxdepth 3 -name index.html -not -path '*/node_modules/*' -not -path '*/.git/*' | awk '{ print length($0) " " $0 }' | sort -n | head -1 | cut -d' ' -f2- | xargs -r dirname`, "")
+	out = strings.TrimPrefix(strings.TrimSpace(out), "./")
+	if err != nil || code != 0 || out == "" {
+		return "", false
+	}
+	return out, true
+}
+
+func (c *Container) findOutput(ctx context.Context, candidates []string) (string, bool) {
 	var parts []string
 	for _, cand := range candidates {
 		if strings.ContainsAny(cand, "'\"$`\\;&|<>(){}\n") {
