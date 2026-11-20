@@ -43,3 +43,6 @@ desktop.ini
 
 # Local launcher (Windows)
 run.bat
+
+# Service logs written by run.bat
+/logs/
