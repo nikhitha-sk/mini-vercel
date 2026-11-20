@@ -80,7 +80,7 @@ func Load() Config {
 		BuildMemoryMB:    int64(envInt("MV_BUILD_MEMORY_MB", 2048)),
 		BuildPIDs:        int64(envInt("MV_BUILD_PIDS", 256)),
 		BuildTimeout:     time.Duration(envInt("MV_BUILD_TIMEOUT_SEC", 600)) * time.Second,
-		WorkerConcurrent: envInt("MV_WORKER_CONCURRENCY", 2),
+		WorkerConcurrent: envInt("MV_WORKER_CONCURRENCY", 4),
 
 		TunnelImage:  env("MV_TUNNEL_IMAGE", "cloudflare/cloudflared:2025.10.0"),
 		TunnelOrigin: env("MV_TUNNEL_ORIGIN", "http://host.docker.internal:"+strings.TrimPrefix(env("MV_EDGE_ADDR", ":8080"), ":")),
