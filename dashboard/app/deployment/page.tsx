@@ -10,7 +10,7 @@ import { CopyButton, useFeedback } from "@/components/feedback";
 import { LogViewer } from "@/components/log-viewer";
 import { api, isActive, type Deployment, type Status } from "@/lib/api";
 import { useResource, useTick } from "@/lib/hooks";
-import { bytes, cn, duration, hostOf, shortSha, timeAgo } from "@/lib/format";
+import { bytes, cn, duration, frameworkName, hostOf, shortSha, timeAgo } from "@/lib/format";
 
 export default function DeploymentPage() {
   return (
@@ -275,13 +275,4 @@ function Pipeline({ status, error }: { status: Status; error: string }) {
       )}
     </div>
   );
-}
-
-const FRAMEWORKS: Record<string, string> = {
-  static: "Static HTML", node: "Node.js", nextjs: "Next.js", nuxt: "Nuxt", astro: "Astro", sveltekit: "SvelteKit", gatsby: "Gatsby",
-  docusaurus: "Docusaurus", vitepress: "VitePress", vuepress: "VuePress", angular: "Angular", cra: "Create React App",
-  "vue-cli": "Vue CLI", eleventy: "Eleventy", hexo: "Hexo", vite: "Vite", parcel: "Parcel", webpack: "webpack",
-};
-function frameworkName(id: string) {
-  return FRAMEWORKS[id] ?? id;
 }

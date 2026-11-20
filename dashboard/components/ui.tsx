@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
-import { Loader2 } from "lucide-react";
+import { forwardRef, useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { Check, Loader2, MoreHorizontal } from "lucide-react";
 import type { Status } from "@/lib/api";
 import { cn } from "@/lib/format";
 
@@ -247,5 +247,135 @@ export function Avatar({ name, className }: { name: string; className?: string }
     >
       {name.slice(0, 1).toUpperCase()}
     </div>
+  );
+}
+
+/* ---------- Dropdown menu ---------- */
+
+export interface MenuItem {
+  label: string;
+  icon?: ReactNode;
+  onSelect?: () => void;
+  href?: string;
+  external?: boolean;
+  danger?: boolean;
+  /** Draw a separator above this item. */
+  separated?: boolean;
+  hidden?: boolean;
+}
+
+export function Menu({ items, label = "More actions", className }: { items: MenuItem[]; label?: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const itemCls = (danger?: boolean) =>
+    cn(
+      "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors",
+      danger ? "text-err hover:bg-err-bg" : "text-fg hover:bg-hover",
+    );
+  return (
+    <div ref={root} className={cn("relative", open ? "z-30" : "z-10", className)}>
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={label}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        className={cn(
+          "flex size-8 cursor-pointer items-center justify-center rounded-md border border-transparent text-muted transition-colors hover:border-line hover:bg-hover hover:text-fg",
+          open && "border-line bg-hover text-fg",
+        )}
+      >
+        <MoreHorizontal className="size-4" />
+      </button>
+      {open && (
+        <div role="menu" className="animate-pop-in absolute right-0 top-full z-30 mt-1.5 w-52 rounded-lg border border-line bg-elevated p-1 shadow-pop">
+          {items
+            .filter((i) => !i.hidden)
+            .map((i) => (
+              <div key={i.label}>
+                {i.separated && <div className="-mx-1 my-1 h-px bg-line" />}
+                {i.href ? (
+                  i.external ? (
+                    <a role="menuitem" href={i.href} target="_blank" rel="noreferrer" className={itemCls(i.danger)} onClick={() => setOpen(false)}>
+                      {i.icon}
+                      {i.label}
+                    </a>
+                  ) : (
+                    <Link role="menuitem" href={i.href} className={itemCls(i.danger)} onClick={() => setOpen(false)}>
+                      {i.icon}
+                      {i.label}
+                    </Link>
+                  )
+                ) : (
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className={itemCls(i.danger)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      i.onSelect?.();
+                    }}
+                  >
+                    {i.icon}
+                    {i.label}
+                  </button>
+                )}
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Checkbox ---------- */
+
+export function Checkbox({ checked, onChange, label, className }: { checked: boolean; onChange: (v: boolean) => void; label: string; className?: string }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onChange(!checked);
+      }}
+      className={cn(
+        "flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border transition-colors",
+        checked ? "border-accent bg-accent text-accent-fg" : "border-line-strong bg-elevated hover:border-fg",
+        className,
+      )}
+    >
+      {checked && <Check className="size-3" strokeWidth={3} />}
+    </button>
+  );
+}
+
+/* ---------- Keyboard hint ---------- */
+
+export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <kbd className={cn("inline-flex h-5 min-w-5 items-center justify-center rounded border border-line bg-subtle px-1 font-sans text-[11px] font-medium text-faint", className)}>
+      {children}
+    </kbd>
   );
 }

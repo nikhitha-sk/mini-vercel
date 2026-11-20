@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { CheckCircle2, Info, X, XCircle } from "lucide-react";
-import { Button } from "./ui";
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from "lucide-react";
+import { Button, Input } from "./ui";
 import { cn } from "@/lib/format";
 
 /* ---------- Toasts ---------- */
@@ -20,6 +20,8 @@ interface ConfirmOptions {
   description?: ReactNode;
   confirmLabel?: string;
   danger?: boolean;
+  /** When set, the user must type this text before the confirm button enables. */
+  requireText?: string;
 }
 
 interface FeedbackCtx {
@@ -87,35 +89,70 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function ConfirmDialog({ title, description, confirmLabel = "Confirm", danger, onClose }: ConfirmOptions & { onClose: (v: boolean) => void }) {
-  const ref = useRef<HTMLButtonElement>(null);
+function ConfirmDialog({ title, description, confirmLabel = "Confirm", danger, requireText, onClose }: ConfirmOptions & { onClose: (v: boolean) => void }) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [typed, setTyped] = useState("");
+  const ready = !requireText || typed.trim() === requireText;
   useEffect(() => {
-    ref.current?.focus();
+    (requireText ? inputRef.current : btnRef.current)?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, requireText]);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]" onClick={() => onClose(false)}>
-      <div
+    <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]" onClick={() => onClose(false)}>
+      <form
         role="dialog"
         aria-modal="true"
-        className="animate-fade-in w-full max-w-md overflow-hidden rounded-xl border border-line bg-elevated shadow-pop"
+        aria-labelledby="confirm-title"
+        className="animate-pop-in w-full max-w-md overflow-hidden rounded-xl border border-line bg-elevated shadow-pop"
         onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (ready) onClose(true);
+        }}
       >
         <div className="p-6">
-          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-          {description && <div className="mt-2 text-sm leading-relaxed text-muted">{description}</div>}
+          <div className="flex items-start gap-3">
+            {danger && (
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-err-bg text-err">
+                <AlertTriangle className="size-4" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 id="confirm-title" className="text-lg font-semibold tracking-tight">
+                {title}
+              </h2>
+              {description && <div className="mt-2 text-sm leading-relaxed text-muted">{description}</div>}
+            </div>
+          </div>
+          {requireText && (
+            <div className="mt-5">
+              <label htmlFor="confirm-input" className="mb-1.5 block text-[13px] text-muted">
+                To confirm, type <span className="rounded bg-subtle px-1.5 py-0.5 font-mono text-[12px] font-medium text-fg">{requireText}</span> below
+              </label>
+              <Input
+                id="confirm-input"
+                ref={inputRef}
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                mono
+              />
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-2 border-t border-line bg-subtle px-6 py-4">
-          <Button variant="secondary" onClick={() => onClose(false)}>
+          <Button type="button" variant="secondary" onClick={() => onClose(false)}>
             Cancel
           </Button>
-          <Button ref={ref} variant={danger ? "danger" : "primary"} onClick={() => onClose(true)}>
+          <Button ref={btnRef} type="submit" variant={danger ? "danger" : "primary"} disabled={!ready}>
             {confirmLabel}
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

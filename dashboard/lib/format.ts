@@ -50,3 +50,12 @@ export function clockTime(iso: string): string {
 export function cn(...c: (string | false | null | undefined)[]): string {
   return c.filter(Boolean).join(" ");
 }
+
+const FRAMEWORKS: Record<string, string> = {
+  static: "Static HTML", node: "Node.js", nextjs: "Next.js", nuxt: "Nuxt", astro: "Astro", sveltekit: "SvelteKit", gatsby: "Gatsby",
+  docusaurus: "Docusaurus", vitepress: "VitePress", vuepress: "VuePress", angular: "Angular", cra: "Create React App",
+  "vue-cli": "Vue CLI", eleventy: "Eleventy", hexo: "Hexo", vite: "Vite", parcel: "Parcel", webpack: "webpack",
+};
+export function frameworkName(id: string) {
+  return FRAMEWORKS[id] ?? id;
+}
