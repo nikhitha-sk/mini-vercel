@@ -152,6 +152,21 @@ The repo ships with test projects in [`examples/`](examples), so you don't need 
 
 > The public link works while your PC is on and Mini Vercel is running. If Docker restarts, the project gets a new random link (shown in the dashboard). For a permanent address like `portfolio.yourname.dev`, see [Going further](#going-further-permanent-urls).
 
+### Test 2c: deploy a real project from GitHub
+
+Paste any **public** repository URL into **Add New Project**. Leave everything on auto-detect and click **Deploy**. These real repos were deployed successfully during testing:
+
+| Repository | Detected |
+| --- | --- |
+| `https://github.com/MaeWolff/astro-portfolio-template` | Astro · npm · Node 18 |
+| `https://github.com/LayZeeDK/github-pages-docusaurus` | Docusaurus · yarn · Node 18 |
+| `https://github.com/riipandi/vite-react-template` | Vite + React · pnpm 10 · Node 24 |
+| `https://github.com/kevinshen56714/create-react-phaser3-app` | Create React App · npm |
+| `https://github.com/codeschool-projects/HTMLPortfolioProject` (branch `master`) | Plain HTML kept in `src/` |
+
+**Which projects work?** Anything that builds to static files: React/Vue/Svelte with Vite, Create React App, Angular, Astro, Docusaurus, Gatsby, Eleventy, VitePress, SvelteKit with `adapter-static`, Next.js with `output: 'export'`, Nuxt `generate`, and plain HTML/CSS/JS.
+**What doesn't:** private repositories (not yet), and apps that need a running server, such as Next.js SSR/API routes, Express or PHP. Mini Vercel is a *static* hosting platform. If a site needs API keys at build time, add them under **Environment Variables**.
+
 ### Test 3: instant rollback
 
 1. On a ready project, click **Deploy** again (or **⋯ → Redeploy**) to create a second deployment.
@@ -202,6 +217,10 @@ cd dashboard && npx tsc --noEmit     # dashboard type-check
 | `npm install` fails in the build | The build container needs internet access to reach the npm registry. |
 | Site URL doesn't open | Use Chrome/Edge/Firefox. `*.localhost` must resolve to 127.0.0.1. |
 | Port already in use | Postgres uses 5433, Redis 6380, S3 9000, API 4000, edge 8080. |
+| "Could not find the build output" | Set **Output Directory** in project Settings to the folder your build creates. |
+| Next.js "no static export" error | Add `output: 'export'` to `next.config.js`. Server features can't be hosted statically. |
+| Go Public stays on "Creating…" | It needs internet access to Cloudflare. It retries every 10 seconds; check the Worker window for errors. |
+| Big project fails with exit 137 | The build ran out of memory. Raise `MV_BUILD_MEMORY_MB` (default 2048). |
 
 ---
 
