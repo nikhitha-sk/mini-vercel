@@ -22,6 +22,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/nikhitha-sk/mini-vercel/internal/config"
+	"github.com/nikhitha-sk/mini-vercel/internal/publish"
 	"github.com/nikhitha-sk/mini-vercel/internal/secrets"
 	"github.com/nikhitha-sk/mini-vercel/internal/storage"
 	"github.com/nikhitha-sk/mini-vercel/internal/store"
@@ -34,6 +35,7 @@ type Server struct {
 	Queue   *asynq.Client
 	Storage *storage.Storage
 	Secrets *secrets.Box
+	Publish *publish.Publisher
 	UserID  string // single local user until GitHub OAuth lands
 }
 
@@ -68,6 +70,10 @@ func (s *Server) Routes() http.Handler {
 			r.Patch("/projects/{projectID}", s.handleUpdateProject)
 			r.Delete("/projects/{projectID}", s.handleDeleteProject)
 			r.Post("/projects/{projectID}/public", s.handleSetPublic)
+			r.Post("/projects/{projectID}/publish", s.handlePublishProject)
+			r.Get("/integrations/netlify", s.handleNetlifyStatus)
+			r.Put("/integrations/netlify", s.handleNetlifyConnect)
+			r.Delete("/integrations/netlify", s.handleNetlifyDisconnect)
 
 			r.Get("/projects/{projectID}/env", s.handleListEnv)
 			r.Put("/projects/{projectID}/env", s.handleSetEnv)

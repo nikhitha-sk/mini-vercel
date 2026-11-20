@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 	"regexp"
@@ -343,6 +344,12 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	aliases, _ := s.Store.ProjectAliases(r.Context(), p.ID)
+	// Remove the permanent Netlify site too (best effort).
+	if p.LiveSiteID != "" {
+		if err := s.Publish.DeleteSite(r.Context(), p.LiveSiteID); err != nil {
+			slog.Warn("delete netlify site", "project", p.Slug, "err", err)
+		}
+	}
 	if err := s.Store.DeleteProject(r.Context(), p.ID); err != nil {
 		s.internal(w, r, err)
 		return

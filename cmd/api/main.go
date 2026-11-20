@@ -16,6 +16,7 @@ import (
 
 	"github.com/nikhitha-sk/mini-vercel/internal/api"
 	"github.com/nikhitha-sk/mini-vercel/internal/config"
+	"github.com/nikhitha-sk/mini-vercel/internal/publish"
 	"github.com/nikhitha-sk/mini-vercel/internal/secrets"
 	"github.com/nikhitha-sk/mini-vercel/internal/storage"
 	"github.com/nikhitha-sk/mini-vercel/internal/store"
@@ -46,7 +47,7 @@ func main() {
 	q := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPass})
 	defer q.Close()
 
-	srv := &api.Server{Cfg: cfg, Store: st, Redis: rdb, Queue: q, Storage: sto, Secrets: box, UserID: user.ID}
+	srv := &api.Server{Cfg: cfg, Store: st, Redis: rdb, Queue: q, Storage: sto, Secrets: box, Publish: publish.New(st, sto, box), UserID: user.ID}
 	httpSrv := &http.Server{Addr: cfg.APIAddr, Handler: srv.Routes(), ReadHeaderTimeout: 10 * time.Second}
 
 	go func() {

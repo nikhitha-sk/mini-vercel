@@ -401,10 +401,14 @@ func (s *Server) handlePromote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.invalidateHost(host)
+	took := float64(time.Since(start).Microseconds()) / 1000
+	live := s.syncLiveOnPromote(r, p, d) // mirror the rollback on the permanent live URL
 	writeJSON(w, 200, map[string]any{
 		"deployment": s.deploymentView(d, d.ID),
 		"hostname":   host,
-		"tookMs":     float64(time.Since(start).Microseconds()) / 1000,
+		"tookMs":     took,
+		"live":       live,
+		"liveUrl":    p.LiveURL,
 	})
 }
 
