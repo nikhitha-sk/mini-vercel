@@ -143,6 +143,10 @@ func (s *Sandbox) Create(ctx context.Context, o CreateOptions) (*Container, erro
 		"ASTRO_TELEMETRY_DISABLED=1",
 		"FORCE_COLOR=0",
 		"MINI_VERCEL=1",
+		// Lets webpack-4 era toolchains (old CRA / Angular / Vue CLI) hash with
+		// MD4 on Node 17+ (fixes "error:0308010C ... unsupported"). Harmless for
+		// modern builds; a project env var can override it.
+		"NODE_OPTIONS=--openssl-legacy-provider",
 		"MINI_VERCEL_DEPLOYMENT_ID=" + o.DeploymentID,
 	}, o.Env...)
 
