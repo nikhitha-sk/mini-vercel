@@ -1,6 +1,6 @@
 # Mini Vercel
 
-**A self-hosted static hosting platform.** Paste a GitHub repo (or upload a zip). A Go build pipeline builds it inside a sandboxed Docker container and serves it at its own URL, with live build logs and instant rollback.
+**A self-hosted static hosting platform.** Paste any public GitHub repo (or upload a zip). Mini Vercel auto-detects the framework, builds it inside a sandboxed Docker container and serves it at its own URL, with live build logs, instant rollback and a **free public HTTPS link** you can share with anyone.
 
 > Static sites only (Vite, React, Astro, Next.js static export, plain HTML). Serverless functions and SSR are out of scope on purpose.
 
@@ -15,8 +15,9 @@
 ## Features
 
 - **Git or zip deploys.** Public HTTPS repo + branch + root directory, or drag-and-drop a `.zip`.
-- **Framework presets.** Vite, Next.js (static export), Astro, CRA, Docusaurus, or plain HTML. The install command auto-detects npm / yarn / pnpm / bun.
-- **Sandboxed builds.** Every build gets a fresh `node:20-alpine` container: non-root, all capabilities dropped, `no-new-privileges`, 1 vCPU, 1 GB RAM (no swap), 256 PIDs, 10-minute limit. The container is removed afterwards, even on failure. The Docker socket is never mounted into it.
+- **Zero-config builds for real projects.** Mini Vercel detects the framework (Vite, Next.js export, Astro, CRA, Angular, SvelteKit, Nuxt, Gatsby, Docusaurus, VitePress, Eleventy, plain HTML, …), the package manager (npm / yarn / pnpm / bun via corepack), the Node version (`.nvmrc` / `engines.node` → 18, 20, 22 or 24) and the output folder. Every value can still be overridden.
+- **Free public URLs.** One click on **Go Public** gives a project an `https://<random-words>.trycloudflare.com` link that works from any device, through a Cloudflare quick tunnel. It's free, with no account, domain or port forwarding needed.
+- **Sandboxed builds.** Every build gets a fresh `node:<version>-alpine` container: non-root, all capabilities dropped, `no-new-privileges`, 1 vCPU, 2 GB RAM (no swap), 256 PIDs, 10-minute limit. The container is removed afterwards, even on failure. The Docker socket is never mounted into it.
 - **Live build logs.** stdout/stderr are streamed over Server-Sent Events (Redis pub/sub) and stored in Postgres for later.
 - **Immutable deployments.** Every deployment keeps its own URL forever: `dpl-<id>.localhost:8080`.
 - **Production alias + instant rollback.** `<project>.localhost:8080` points at one deployment. Promoting or rolling back is a single `UPSERT` (about 25 ms) with no rebuild.
@@ -48,7 +49,8 @@ The API never builds anything; workers do. The edge only reads. Each part scales
 | Dashboard | Next.js 15 (static export), Tailwind CSS v4, lucide icons |
 | API | Go, chi, pgx v5 |
 | Queue | Redis + hibiken/asynq (retries, backoff, timeouts, task dedupe) |
-| Sandbox | Docker Engine API (Go SDK), `node:20-alpine` |
+| Sandbox | Docker Engine API (Go SDK), `node:{18,20,22,24}-alpine` |
+| Public URLs | Cloudflare quick tunnels (one `cloudflared` container per shared project) |
 | Storage | S3 API via aws-sdk-go-v2: SeaweedFS locally, Cloudflare R2 in production |
 | Edge | Go `net/http` + LRU cache, Caddy for wildcard TLS |
 | Database | PostgreSQL 16 |
@@ -138,8 +140,17 @@ The repo ships with test projects in [`examples/`](examples), so you don't need 
 ### Test 2: upload a zip
 
 1. **Add New Project** → **Upload Zip**.
-2. Drop `examples/zips/static-site.zip` and set the preset to **Other / Static HTML**.
-3. Deploy, then visit the site. Also try `/about` and a missing page like `/nope.png` (you should get the custom 404).
+2. Drop any zip from `examples/zips/` (`static-site.zip` or `vite-demo.zip`). Leave the framework on **Auto-detect**.
+3. Deploy, then visit the site. For `static-site`, also try `/about` and a missing page like `/nope.png` (you should get the custom 404).
+
+### Test 2b: share it on the internet (free)
+
+1. Open a project that has a **Ready** deployment.
+2. Click **Go Public** on the *Public URL* card. After about 10 seconds you get a link like `https://some-random-words.trycloudflare.com`.
+3. Open that link on your phone (mobile data, not Wi-Fi) or send it to a friend. It works anywhere.
+4. Roll back or redeploy, and the public link updates instantly. **Stop sharing** turns it off.
+
+> The public link works while your PC is on and Mini Vercel is running. If Docker restarts, the project gets a new random link (shown in the dashboard). For a permanent address like `portfolio.yourname.dev`, see [Going further](#going-further-permanent-urls).
 
 ### Test 3: instant rollback
 
@@ -226,6 +237,17 @@ Set `MV_API_TOKEN` to require `Authorization: Bearer <token>`. All settings are 
 | 4 | Dashboard, GitHub webhook, README | ✅ Done · ⏳ GitHub OAuth login, host the dashboard on the platform itself, public demo + recording |
 
 **Next up:** GitHub OAuth (multi-user), deploy to a VPS with Caddy + Cloudflare R2, deploy the dashboard *through* Mini Vercel itself, build cache keyed by lockfile hash, `deploy.json` redirects, per-deployment analytics at the edge.
+
+## Going further: permanent URLs
+
+The built-in **Go Public** links are free and instant, but they are random and only live while your PC runs Mini Vercel. For URLs that never change and stay up 24/7:
+
+| Option | Cost | Result |
+| --- | --- | --- |
+| **Oracle Cloud "Always Free" VM + DuckDNS + Caddy** | Free (Oracle asks for a card to verify identity, no charge) | `portfolio.yourname.duckdns.org` with HTTPS, running 24/7 without your PC. DuckDNS subdomains support wildcards. |
+| **Your own domain + Cloudflare named tunnel** | Domain only (about $1–10 per year) | `portfolio.yourdomain.dev`, served from your PC through a free Cloudflare Tunnel |
+
+Both use the same code: set `MV_ROOT_DOMAIN`, `MV_PUBLIC_SCHEME=https`, `MV_PUBLIC_PORT=443` and put Caddy in front (see `deploy/Caddyfile`).
 
 ## Design notes (interview talking points)
 
