@@ -28,6 +28,7 @@ export interface Deployment {
   rootDirectory: string;
   framework: string;
   nodeVersion: string;
+  liveUrl: string;
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
@@ -65,6 +66,8 @@ export interface Project {
   publicEnabled: boolean;
   publicUrl: string;
   publicStatus: "" | "starting" | "live" | "error";
+  liveUrl: string;
+  liveStatus: "" | "publishing" | "live" | "error";
   productionDeployment: Deployment | null;
   latestDeployment: Deployment | null;
   webhookUrl?: string;
@@ -110,6 +113,13 @@ export interface PlatformConfig {
   publicPort: string;
   authRequired: boolean;
   limits: { cpus: number; memoryMB: number; pids: number; timeoutSec: number; image: string };
+}
+
+export interface NetlifyStatus {
+  connected: boolean;
+  name?: string;
+  email?: string;
+  error?: string;
 }
 
 export class ApiError extends Error {
@@ -166,6 +176,10 @@ export const api = {
   updateProject: (id: string, body: Record<string, unknown>) =>
     request<Project>(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteProject: (id: string) => request<void>(`/projects/${id}`, { method: "DELETE" }),
+  publishLive: (id: string) => request<{ deploymentId: string; status: string }>(`/projects/${id}/publish`, { method: "POST" }),
+  netlify: () => request<NetlifyStatus>("/integrations/netlify"),
+  connectNetlify: (token: string) => request<NetlifyStatus>("/integrations/netlify", { method: "PUT", body: JSON.stringify({ token }) }),
+  disconnectNetlify: () => request<void>("/integrations/netlify", { method: "DELETE" }),
   setPublic: (id: string, enabled: boolean) =>
     request<Project>(`/projects/${id}/public`, { method: "POST", body: JSON.stringify({ enabled }) }),
 

@@ -136,7 +136,7 @@ function DeploymentView() {
                   </Button>
                 )}
                 {d.status === "READY" && (
-                  <ButtonLink href={d.url} external variant="primary" icon={<ExternalLink className="size-4" />}>
+                  <ButtonLink href={d.liveUrl || d.url} external variant="primary" icon={<ExternalLink className="size-4" />}>
                     Visit
                   </ButtonLink>
                 )}

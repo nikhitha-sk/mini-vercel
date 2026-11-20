@@ -9,6 +9,7 @@ import { Button, ButtonLink, Card, CardHeader, EmptyState, ErrorBanner, Input, K
 import { CopyButton, useFeedback } from "@/components/feedback";
 import { DeploymentList } from "@/components/deployment-list";
 import { PublicUrlCard } from "@/components/public-url";
+import { LiveUrlCard } from "@/components/live-hosting";
 import { API_URL, api, isActive, type Preset, type Project } from "@/lib/api";
 import { useResource, useTick } from "@/lib/hooks";
 import { duration, hostOf, repoPath, shortSha, timeAgo } from "@/lib/format";
@@ -35,7 +36,7 @@ function ProjectView() {
 
   const project = useResource(() => api.project(id), [id], {
     pollMs: 2500,
-    pollWhile: (p) => (!!p.latestDeployment && isActive(p.latestDeployment.status)) || (p.publicEnabled && p.publicStatus !== "live"),
+    pollWhile: (p) => (!!p.latestDeployment && isActive(p.latestDeployment.status)) || (p.publicEnabled && p.publicStatus !== "live") || p.liveStatus === "publishing",
   });
   const deployments = useResource(() => api.deployments(id), [id], {
     pollMs: 2500,
@@ -119,7 +120,7 @@ function ProjectView() {
                   </Button>
                 )}
                 {p.productionDeployment && (
-                  <ButtonLink href={p.productionUrl} external variant="primary" icon={<ExternalLink className="size-4" />}>
+                  <ButtonLink href={p.liveUrl || p.productionUrl} external variant="primary" icon={<ExternalLink className="size-4" />}>
                     Visit
                   </ButtonLink>
                 )}
@@ -165,6 +166,7 @@ function OverviewTab({ p, onChange }: { p: Project; onChange: () => void }) {
         </Link>
       )}
 
+      <LiveUrlCard project={p} onChange={onChange} />
       <PublicUrlCard project={p} onChange={onChange} />
 
       <Card className="overflow-hidden">

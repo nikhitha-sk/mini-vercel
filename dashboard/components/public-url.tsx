@@ -54,7 +54,7 @@ export function PublicUrlCard({ project, onChange }: { project: Project; onChang
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[15px] font-semibold">
-            Public URL
+            Temporary share link
             {live && <span className="rounded-full bg-ok-bg px-2 py-0.5 text-[11px] font-medium text-ok">Live on the internet</span>}
           </div>
           {live ? (

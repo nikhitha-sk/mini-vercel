@@ -147,12 +147,12 @@ function ProjectCard({ p }: { p: Project }) {
           </Link>
           {prod ? (
             <a
-              href={p.productionUrl}
+              href={p.liveUrl || p.productionUrl}
               target="_blank"
               rel="noreferrer"
               className="relative z-10 mt-0.5 block truncate text-[13px] text-muted hover:text-fg hover:underline"
             >
-              {hostOf(p.productionUrl)}
+              {hostOf(p.liveUrl || p.productionUrl)}
             </a>
           ) : (
             <span className="mt-0.5 block text-[13px] text-faint">No production deployment</span>
@@ -160,7 +160,7 @@ function ProjectCard({ p }: { p: Project }) {
         </div>
         {prod && (
           <a
-            href={p.productionUrl}
+            href={p.liveUrl || p.productionUrl}
             target="_blank"
             rel="noreferrer"
             aria-label={`Visit ${p.name}`}

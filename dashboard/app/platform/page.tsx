@@ -5,6 +5,7 @@ import { AppShell, Container, PageHeader } from "@/components/shell";
 import { Card, CardHeader, Kv, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/hooks";
+import { NetlifyConnectCard } from "@/components/live-hosting";
 
 const FLOW = [
   { icon: <Layers className="size-4" />, title: "Dashboard / API", body: "Records an immutable deployment row (QUEUED) and enqueues one job." },
@@ -21,6 +22,8 @@ export default function PlatformPage() {
     <AppShell>
       <PageHeader title="Platform" description="How Mini Vercel builds and serves your sites, and the limits every build runs under." />
       <Container className="space-y-6">
+        <NetlifyConnectCard />
+
         <Card>
           <CardHeader title="Deployment pipeline" description="The API never builds anything. Workers do, and the edge only reads, so each part scales on its own." />
           <ol className="grid grid-cols-1 gap-px overflow-hidden bg-line md:grid-cols-5">
