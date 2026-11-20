@@ -19,6 +19,7 @@ import (
 	"github.com/nikhitha-sk/mini-vercel/internal/secrets"
 	"github.com/nikhitha-sk/mini-vercel/internal/storage"
 	"github.com/nikhitha-sk/mini-vercel/internal/store"
+	"github.com/nikhitha-sk/mini-vercel/internal/tunnel"
 	"github.com/nikhitha-sk/mini-vercel/internal/worker"
 )
 
@@ -63,6 +64,13 @@ func main() {
 
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr, Password: cfg.RedisPass})
 	defer rdb.Close()
+
+	// Free public URLs (Cloudflare quick tunnels) for projects that opt in.
+	if tm, err := tunnel.New(cfg, st, rdb); err != nil {
+		slog.Warn("public URLs disabled", "err", err)
+	} else {
+		go tm.Run(ctx)
+	}
 
 	w := &worker.Worker{Cfg: cfg, Store: st, Redis: rdb, Storage: sto, Sandbox: sb, Secrets: box}
 	srv := asynq.NewServer(asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPass}, asynq.Config{

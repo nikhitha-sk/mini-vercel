@@ -44,6 +44,10 @@ type Config struct {
 	BuildPIDs        int64
 	BuildTimeout     time.Duration
 	WorkerConcurrent int
+
+	// Free public URLs via Cloudflare quick tunnels.
+	TunnelImage  string
+	TunnelOrigin string // where cloudflared (in Docker) reaches the edge router
 }
 
 func Load() Config {
@@ -77,6 +81,9 @@ func Load() Config {
 		BuildPIDs:        int64(envInt("MV_BUILD_PIDS", 256)),
 		BuildTimeout:     time.Duration(envInt("MV_BUILD_TIMEOUT_SEC", 600)) * time.Second,
 		WorkerConcurrent: envInt("MV_WORKER_CONCURRENCY", 2),
+
+		TunnelImage:  env("MV_TUNNEL_IMAGE", "cloudflare/cloudflared:2025.10.0"),
+		TunnelOrigin: env("MV_TUNNEL_ORIGIN", "http://host.docker.internal:"+strings.TrimPrefix(env("MV_EDGE_ADDR", ":8080"), ":")),
 	}
 }
 
