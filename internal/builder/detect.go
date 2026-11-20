@@ -133,7 +133,8 @@ func installFor(dir, packageManager string) (pm, cmd string) {
 	switch {
 	case exists(filepath.Join(dir, "pnpm-lock.yaml")) || strings.HasPrefix(packageManager, "pnpm"):
 		bin := pnpmBinary(dir, packageManager)
-		return "pnpm", bin + " install --frozen-lockfile || " + bin + " install --no-frozen-lockfile"
+		store := " --store-dir=/home/node/.mv-cache/pnpm"
+		return "pnpm", bin + " install --frozen-lockfile" + store + " || " + bin + " install --no-frozen-lockfile" + store
 	case exists(filepath.Join(dir, "bun.lockb")) || exists(filepath.Join(dir, "bun.lock")) || strings.HasPrefix(packageManager, "bun"):
 		return "bun", "npx --yes bun install"
 	case exists(filepath.Join(dir, "yarn.lock")) || strings.HasPrefix(packageManager, "yarn"):
@@ -210,7 +211,9 @@ func nextStaticExport(dir string) bool {
 
 var majorRe = regexp.MustCompile(`(\d+)`)
 
-// nodeVersion returns a supported Node major (18, 20, 22, 24) or 0.
+// nodeVersion returns a supported Node major (20, 22, 24) or 0. Requests for
+// end-of-life versions (18 and older) are raised to 20: old Node silently
+// breaks native optional deps such as sharp, and Vercel no longer offers it.
 func nodeVersion(dir, engines string) int {
 	candidates := []string{}
 	for _, f := range []string{".nvmrc", ".node-version"} {
@@ -230,8 +233,6 @@ func nodeVersion(dir, engines string) int {
 		}
 		n, _ := strconv.Atoi(m)
 		switch {
-		case n <= 18:
-			return 18
 		case n <= 20:
 			return 20
 		case n <= 22:

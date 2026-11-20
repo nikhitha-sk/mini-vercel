@@ -73,7 +73,7 @@ func TestDetectCRAAndNvmrc(t *testing.T) {
 		".nvmrc":       "v18.19.0",
 	})
 	d := Detect(dir)
-	if d.Framework != "cra" || d.PackageManager != "yarn" || d.OutputDirs[0] != "build" || d.NodeMajor != 18 {
+	if d.Framework != "cra" || d.PackageManager != "yarn" || d.OutputDirs[0] != "build" || d.NodeMajor != 20 {
 		t.Fatalf("unexpected: %+v", d)
 	}
 }
