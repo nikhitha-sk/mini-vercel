@@ -43,6 +43,9 @@ func main() {
 	sb, err := builder.NewSandbox(cfg.BuildImage)
 	must(err, "docker client")
 	must(sb.Ping(ctx), "docker daemon unreachable")
+	if err := sb.EnsureCache(ctx); err != nil {
+		slog.Warn("build cache unavailable", "err", err)
+	}
 	go func() {
 		if err := sb.EnsureImage(ctx, cfg.BuildImage); err != nil {
 			slog.Warn("pre-pull build image", "err", err)

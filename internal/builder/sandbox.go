@@ -21,11 +21,14 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 
@@ -35,6 +38,10 @@ import (
 const (
 	homeDir = "/home/node"
 	appDir  = homeDir + "/app"
+
+	// CacheVolume is the Docker volume shared by builds for package downloads.
+	CacheVolume = "mv-build-cache"
+	cacheDir    = homeDir + "/.mv-cache"
 )
 
 // UserError is a failure caused by the user's code or config (bad build
@@ -60,6 +67,8 @@ type Limits struct {
 type Sandbox struct {
 	docker *client.Client
 	image  string
+
+	cacheReady atomic.Bool // shared package cache volume prepared
 }
 
 func NewSandbox(image string) (*Sandbox, error) {
@@ -137,6 +146,16 @@ func (s *Sandbox) Create(ctx context.Context, o CreateOptions) (*Container, erro
 		"MINI_VERCEL_DEPLOYMENT_ID=" + o.DeploymentID,
 	}, o.Env...)
 
+	var mounts []mount.Mount
+	if s.cacheReady.Load() {
+		mounts = []mount.Mount{{Type: mount.TypeVolume, Source: CacheVolume, Target: cacheDir}}
+		env = append(env,
+			"npm_config_cache="+cacheDir+"/npm",
+			"YARN_CACHE_FOLDER="+cacheDir+"/yarn",
+			"COREPACK_HOME="+cacheDir+"/corepack",
+		)
+	}
+
 	init := true
 	pids := o.Limits.PIDs
 	mem := o.Limits.MemoryMB * 1024 * 1024
@@ -159,6 +178,10 @@ func (s *Sandbox) Create(ctx context.Context, o CreateOptions) (*Container, erro
 				PidsLimit:  &pids,
 			},
 			LogConfig: container.LogConfig{Type: "none"},
+			// Shared download cache (npm, yarn, pnpm, corepack) so repeat builds
+			// skip re-downloading packages. Contents are integrity-checked by the
+			// package managers; use a per-tenant volume for multi-user setups.
+			Mounts: mounts,
 		}, nil, nil, name)
 	if err != nil {
 		return nil, fmt.Errorf("create container: %w", err)
@@ -459,4 +482,33 @@ func tarDir(dir, prefix string, w io.Writer) error {
 		return err
 	}
 	return tw.Close()
+}
+
+// EnsureCache creates the shared package cache volume and makes it writable
+// by the unprivileged "node" user (uid 1000). Safe to call repeatedly.
+func (s *Sandbox) EnsureCache(ctx context.Context) error {
+	if _, err := s.docker.VolumeCreate(ctx, volume.CreateOptions{Name: CacheVolume, Labels: map[string]string{"io.minivercel.role": "cache"}}); err != nil {
+		return err
+	}
+	if err := s.EnsureImage(ctx, s.image); err != nil {
+		return err
+	}
+	resp, err := s.docker.ContainerCreate(ctx,
+		&container.Config{Image: s.image, User: "root", Cmd: []string{"sh", "-c", "mkdir -p /c/npm /c/yarn /c/pnpm /c/corepack && chown -R 1000:1000 /c"}},
+		&container.HostConfig{Mounts: []mount.Mount{{Type: mount.TypeVolume, Source: CacheVolume, Target: "/c"}}}, nil, nil, "")
+	if err != nil {
+		return err
+	}
+	defer s.docker.ContainerRemove(context.Background(), resp.ID, container.RemoveOptions{Force: true})
+	if err := s.docker.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		return err
+	}
+	waitC, errC := s.docker.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case <-waitC:
+		s.cacheReady.Store(true)
+		return nil
+	case err := <-errC:
+		return err
+	}
 }
